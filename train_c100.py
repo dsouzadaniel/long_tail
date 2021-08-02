@@ -44,7 +44,7 @@ print("DEVICE -> {0}".format(device))
 
 #####################################################
 # Settings
-# TRAIN_DATASET = 'cifar10'
+# TRAIN_DATASET = 'cifar100'
 # TRAIN_DATASET = 'N20_A20_T60'
 TRAIN_DATASET = 'N20_A20_TX2'
 
@@ -56,7 +56,7 @@ TGT_AUG_EPOCH_AFTER = 4
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 
-_using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
+_using_longtail_dataset = False if TRAIN_DATASET == 'cifar100' else True
 
 EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
 WRITE_FOLDER = os.path.join("{0}_{1}".format(seed_value, TRAIN_DATASET), EXP_NAME)
@@ -67,11 +67,11 @@ if not os.path.exists(WRITE_FOLDER):
 
 if not _using_longtail_dataset:
     print("{0}_Using Original({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
-    orig_trainset = classes.CIFAR10(apply_augmentation=False)
+    orig_trainset = classes.CIFAR100(apply_augmentation=False)
 else:
     print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
-    _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR10', TRAIN_DATASET + '.npz')
-    orig_trainset = classes.LONGTAIL_CIFAR10(dataset_npz=_train_npz, apply_augmentation=False)
+    _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR100', TRAIN_DATASET + '.npz')
+    orig_trainset = classes.LONGTAIL_CIFAR100(dataset_npz=_train_npz, apply_augmentation=False)
 
 print(orig_trainset)
 
@@ -95,7 +95,7 @@ orig_trainloader = DataLoader(
     worker_init_fn=np.random.seed(seed_value),
 )
 
-testset = classes.CIFAR10_TEST()
+testset = classes.CIFAR100_TEST()
 testloader = DataLoader(
     testset,
     batch_size=config.TEST_BATCH_SIZE,
@@ -105,7 +105,7 @@ testloader = DataLoader(
 )
 
 net = wide_resnet.Wide_ResNet(
-    depth=28, widen_factor=10, dropout_rate=0, num_classes=len(config.CLASSES_C10)
+    depth=28, widen_factor=10, dropout_rate=0, num_classes=len(config.CLASSES_C100)
 )
 net = net.to(device)
 
@@ -117,7 +117,7 @@ optimizer = optim.SGD(
     net.parameters(), lr=config.LR, momentum=0.9, weight_decay=5e-4, nesterov=True
 )
 scheduler = optim.lr_scheduler.MultiStepLR(
-    optimizer, milestones=[10, 20, 30], gamma=0.2
+    optimizer, milestones=[40, 50, 55], gamma=0.2
 )
 
 
@@ -137,10 +137,10 @@ def train(epoch):
     print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
 
     if not _using_longtail_dataset:
-        curr_trainset = classes.CIFAR10_DYNAMIC(augment_indicator=to_augment_next_epoch,
+        curr_trainset = classes.CIFAR100_DYNAMIC(augment_indicator=to_augment_next_epoch,
                                                 num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
     else:
-        curr_trainset = classes.LONGTAIL_CIFAR10_DYNAMIC(dataset_npz=_train_npz,
+        curr_trainset = classes.LONGTAIL_CIFAR100_DYNAMIC(dataset_npz=_train_npz,
                                                          augment_indicator=to_augment_next_epoch,
                                                          num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
 
@@ -184,8 +184,8 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    class_correct = list(0.0 for i in range(len(config.CLASSES_C10)))
-    class_total = list(0.0 for i in range(len(config.CLASSES_C10)))
+    class_correct = list(0.0 for i in range(len(config.CLASSES_C100)))
+    class_total = list(0.0 for i in range(len(config.CLASSES_C100)))
 
     # Zero out Preds at Epoch Start
     test_epoch_predictions.fill(0)
