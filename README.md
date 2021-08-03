@@ -10,11 +10,11 @@
   year={2021}}
 ```
 
-![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) :bulb: **_tldr: Examples of Atypical and Noisy Error. The former is reducible with the introduction of information and the other is not!_** :bulb:
+![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) :rotating_light: **_tldr: Examples of Atypical and Noisy Error. The former is reducible with the introduction of information and the other is not!_** :rotating_light:
 
 
 # **Setup**
-This repository is built using PyTorch. You can install the necessary libraries by 
+This repository is built using PyTorch:fire:. You can install the necessary libraries by 
 `pip install -r requirements.txt`
 
 # **Datasets**
