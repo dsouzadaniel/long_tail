@@ -1,5 +1,5 @@
 # A Tale Of Two Long Tails
-Official Codebase for [A Tale Of Two Long Tails](https://arxiv.org/abs/2107.13098)
+:octocat:  Official Codebase :octocat:  for [A Tale Of Two Long Tails](https://arxiv.org/abs/2107.13098)
 
 **If you use this software, please consider citing:**
 
