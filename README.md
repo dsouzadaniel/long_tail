@@ -10,7 +10,7 @@
   year={2021}}
 ```
 
-![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) <mark>**_tldr: Examples of Atypical and Noisy Error. One is reducible with the introduction of information and the other is not_**</mark>
+![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) :bulb: **_tldr: Examples of Atypical and Noisy Error. The former is reducible with the introduction of information and the other is not!_** :bulb:
 
 
 # **Setup**
