@@ -1,5 +1,5 @@
 # A Tale Of Two Long Tails
-:octocat:  Official Codebase :octocat:  for [A Tale Of Two Long Tails](https://arxiv.org/abs/2107.13098)
+Official :octocat: Codebase  for [A Tale Of Two Long Tails](https://arxiv.org/abs/2107.13098)
 
 **If you use this software, please consider citing:**
 
@@ -36,10 +36,10 @@ The above steps can be repeated for CIFAR-100 by using train_c100.py
 
 # **Results**
 
-**_CIFAR-10_**
+__CIFAR-10__
 ![alt text](https://i.ibb.co/jhwPndc/c10.png)
 
-**_CIFAR-100_**
+__CIFAR-100__
 ![alt text](https://i.ibb.co/Rpw4fK7/c100.png)
 
 _Visualization Code will be added shortly._
