@@ -1,5 +1,5 @@
-# long_tail
-Official Codebase for "A Tale Of Two Long Tails"(https://arxiv.org/abs/2107.13098)
+# A Tale Of Two Long Tails
+Official Codebase for [A Tale Of Two Long Tails](https://arxiv.org/abs/2107.13098)
 
 **If you use this software, please consider citing:**
 
@@ -10,7 +10,7 @@ Official Codebase for "A Tale Of Two Long Tails"(https://arxiv.org/abs/2107.1309
   year={2021}}
 ```
 
-![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) **_tldr: Examples of Atypical and Noisy Error. One is reducible with the introduction of information and the other is not_**
+![Long Tail Examples](https://i.ibb.co/ngLndM8/longtail-example.png) <mark>**_tldr: Examples of Atypical and Noisy Error. One is reducible with the introduction of information and the other is not_**</mark>
 
 
 # **Setup**
@@ -22,7 +22,7 @@ This repository is built using PyTorch. You can install the necessary libraries 
 2. Unzip above files in folder "datasets" in main directory
 
 # **Usage**
-The scripts to train CIFAR-10 is train_c10.py.
+The scripts to train CIFAR-10 models on all datasets is train_c10.py.
 
 **Training**
 
@@ -42,9 +42,9 @@ The above steps can be repeated for CIFAR-100 by using train_c100.py
 **_CIFAR-100_**
 ![alt text](https://i.ibb.co/Rpw4fK7/c100.png)
 
+_Visualization Code will be added shortly._
+
 # **Licenses**
 Note that the code in this repository is licensed under MIT License. Please carefully check them before use.
-# **Results**
-Visualization Code will be added shortly. Reach out to **ddsouza[at]umich[dot]edu** with any questions
-
+# **Questions?**
 If you have questions/suggestions, please feel free to [email](mailto:ddsouza@umich.edu) or create github issues.
