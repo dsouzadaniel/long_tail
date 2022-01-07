@@ -12,8 +12,6 @@ from typing import Dict, List
 import os
 
 # Imports
-from classes import LONGTAIL_IMAGENET
-
 class LONGTAIL_IMAGENET(DatasetFolder):
 
     def __init__(self, train_directory, dataset_npz, apply_transform=True, apply_augmentation=False):
