@@ -498,9 +498,10 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
     # Zero Out Epoch Matrix at Epoch Start
     train_epoch_predictions.fill(0)
 
+    start_batch_time = time.time()
+
     for i, (ixs, images, target) in enumerate(curr_trainloader):
 
-        start_batch_time = time.time()
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -536,6 +537,7 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
             progress.display(i)
             print("Total Predictions Written : {0}".format(np.sum(train_epoch_predictions > 0)))
             print("Step Size Time : {0}".format(pretty_time_delta(time.time() - start_batch_time)))
+            start_batch_time = time.time()
 
     return top1.avg, losses.avg
 
