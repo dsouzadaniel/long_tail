@@ -528,15 +528,14 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
         target_softmax_output = softmax(output.clone().cpu().detach())[np.arange(len(target)), target]
         train_epoch_predictions[ixs[ixs < dataset_props['size']]] = target_softmax_output[ixs < dataset_props['size']]
 
-        print("Total Predictions Written : {0}".format(train_epoch_predictions.sum()))
-        print("Batch Size Time : {0}".format(pretty_time_delta(time.time()-start_batch_time)))
-
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
         if i % args.print_freq == 0:
             progress.display(i)
+            print("Total Predictions Written : {0}".format(np.sum(train_epoch_predictions > 0)))
+            print("Step Size Time : {0}".format(pretty_time_delta(time.time() - start_batch_time)))
 
     return top1.avg, losses.avg
 
