@@ -38,11 +38,11 @@ class IMAGENET(DatasetFolder):
         )
         self.transforms = augmentation if apply_transform == True else None
 
-        classes, class_2_ix = self.find_classes(train_directory)
+        classes, self.class_2_ix = self.find_classes(train_directory)
 
-        self.ix_2_class = {v: k for k, v in class_2_ix.items()}
+        self.ix_2_class = {v: k for k, v in self.class_2_ix.items()}
 
-        self.dataset = self.make_dataset(train_directory, class_2_ix)
+        self.dataset = self.make_dataset(train_directory, self.class_2_ix)
         self.dataset_name = "ImageNet"
 
     def __getitem__(self, ix):
@@ -52,7 +52,7 @@ class IMAGENET(DatasetFolder):
             data = self.transforms(sample)
         else:
             data = sample
-        return ix, data, target
+        return ix, data, self.class_2_ix[target]
 
     def __len__(self):
         return len(self.dataset)
@@ -142,6 +142,8 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             ]
         )
 
+        classes, self.class_2_ix = self.find_classes(train_directory)
+
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
 
@@ -170,7 +172,7 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             data = self.transforms(sample)
         else:
             data = sample
-        return ix, data, target
+        return ix, data, self.class_2_ix[target]
 
     def __len__(self):
         return len(self.dataset)
@@ -259,14 +261,14 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self._dataset_npz = np.load(dataset_npz, allow_pickle=True)
 
         self.orig_labels = [f[1] for f in self._dataset_npz['filenames']]
-        classes, class_2_ix = self.find_classes(train_directory)
+        classes, self.class_2_ix = self.find_classes(train_directory)
 
-        self.ix_2_class = {v: k for k, v in class_2_ix.items()}
+        self.ix_2_class = {v: k for k, v in self.class_2_ix.items()}
         self.class_2_text = self._dataset_npz['class_mapping'].item()
 
-        self.labels = np.array([class_2_ix[l] for l in self.orig_labels])
+        self.labels = np.array([self.class_2_ix[l] for l in self.orig_labels])
 
-        self.dataset = self.make_dataset(train_directory, class_2_ix)
+        self.dataset = self.make_dataset(train_directory, self.class_2_ix)
         self.dataset_name = self._dataset_npz['repr_data']
 
         _indicator = self._dataset_npz['indicator_data']
@@ -284,7 +286,7 @@ class LONGTAIL_IMAGENET(DatasetFolder):
             data = self.transforms(sample)
         else:
             data = sample
-        return ix, data, target
+        return ix, data, self.class_2_ix[target]
 
     def __len__(self):
         return len(self.dataset)
@@ -334,6 +336,7 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
         self.augment_indicator = augment_indicator
         self.num_additional_copies = num_additional_copies
         self._dataset_npz = np.load(dataset_npz, allow_pickle=True)
+        classes, self.class_2_ix = self.find_classes(train_directory)
         # Get Original Dataset without any transform/augmentation
         _orig_dataset = LONGTAIL_IMAGENET(train_directory=train_directory, dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
 
@@ -386,7 +389,7 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
         else:
             data = self.transform(sample)
 
-        return added_ix, data, target
+        return added_ix, data, self.class_2_ix[target]
 
     def __len__(self):
         return len(self.dataset)
