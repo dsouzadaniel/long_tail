@@ -113,6 +113,124 @@ class IMAGENET(DatasetFolder):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
         return repr_str
 
+class IMAGENET_DYNAMIC(DatasetFolder):
+
+    def __init__(self, train_directory, augment_indicator, num_additional_copies=0):
+
+        self.augment_indicator = augment_indicator
+        self.num_additional_copies = num_additional_copies
+
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = IMAGENET(apply_augmentation=False).dataset
+
+        self.augment_and_transform = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ]
+        )
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+            ]
+        )
+
+        # Collect the Ixs for __getitem__
+        self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
+            expanded_dataset
+        )
+
+        # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate((self.ixs_to_augment,np.arange(len(_orig_dataset),(len(_orig_dataset)+len(self.ixs_to_augment)))))
+
+        self.dataset = _orig_dataset + expanded_dataset
+
+        # shuffle so added images aren't all at the end
+        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
+
+        self.dataset_name = "ImageNet Dynamic"
+
+    def __getitem__(self, ix):
+        path, target = self.dataset[ix]
+        sample = self.loader(path)
+        if self.transforms:
+            data = self.transforms(sample)
+        else:
+            data = sample
+        return ix, data, target
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def find_classes(self, directory):
+        classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+        if not classes:
+            raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
+        print("Classes Found : {0}".format(len(classes)))
+        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+        return classes, class_to_idx
+
+    def loader(self, path: str) -> Image.Image:
+        # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+        with open(path, 'rb') as f:
+            img = Image.open(f)
+            return img.convert('RGB')
+
+    def make_dataset(
+            self,
+            directory: str,
+            class_2_ix: Dict[str, int]):
+        """Generates a list of samples of a form (path_to_sample, class).
+        Note: The class_2_ix parameter is here optional and will use the logic of the ``find_classes`` function
+        by default.
+        """
+        directory = os.path.expanduser(directory)
+
+        if class_2_ix is None:
+            _, class_to_idx = self.find_classes(directory)
+        elif not class_2_ix:
+            raise ValueError("'class_to_index' must have at least one entry to collect any samples.")
+
+        instances = []
+        available_classes = set()
+        for target_class in sorted(class_2_ix.keys()):
+            class_index = class_2_ix[target_class]
+            target_dir = os.path.join(directory, target_class)
+            if not os.path.isdir(target_dir):
+                continue
+            for root, _, fnames in sorted(os.walk(target_dir, followlinks=True)):
+                for fname in sorted(fnames):
+                    path = os.path.join(root, fname)
+                    item = path, class_index
+                    instances.append(item)
+
+                    if target_class not in available_classes:
+                        available_classes.add(target_class)
+
+        empty_classes = set(class_2_ix.keys()) - available_classes
+        if empty_classes:
+            msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
+            raise FileNotFoundError(msg)
+
+        return instances
+
+    def __repr__(self):
+        repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
+        return repr_str
+
 class LONGTAIL_IMAGENET(DatasetFolder):
 
     def __init__(self, train_directory, dataset_npz, apply_transform=True, apply_augmentation=False):
