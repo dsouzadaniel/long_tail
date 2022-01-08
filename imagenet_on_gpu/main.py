@@ -463,8 +463,6 @@ def train(model, criterion, optimizer, epoch, dataset_props, args):
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
 
-
-
     print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(dataset_props['to_augment_next_epoch'])))
 
     if not dataset_props['_using_longtail_dataset']:
