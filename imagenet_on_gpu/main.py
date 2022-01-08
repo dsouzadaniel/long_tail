@@ -499,6 +499,8 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
     train_epoch_predictions.fill(0)
 
     for i, (ixs, images, target) in enumerate(curr_trainloader):
+
+        start_batch_time = time.time()
         # measure data loading time
         data_time.update(time.time() - end)
 
@@ -526,6 +528,8 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
         target_softmax_output = softmax(output.clone().cpu().detach())[np.arange(len(target)), target]
         train_epoch_predictions[ixs[ixs < dataset_props['size']]] = target_softmax_output[ixs < dataset_props['size']]
 
+        print("Total Predictions Written : {0}".format(train_epoch_predictions.sum()))
+        print("Batch Size Time : {0}".format(pretty_time_delta(time.time()-start_batch_time)))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -679,6 +683,20 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+
+def pretty_time_delta(seconds):
+    seconds = int(seconds)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%dh %dm %ds' % (hours, minutes, seconds)
+    elif minutes > 0:
+        return '%dm %ds' % (minutes, seconds)
+    else:
+        return '%ds' % (seconds,)
 
 if __name__ == '__main__':
     main()
