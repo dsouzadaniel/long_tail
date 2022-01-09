@@ -109,6 +109,7 @@ class IMAGENET(DatasetFolder):
             raise FileNotFoundError(msg)
 
         shuffle(instances)
+        print("###"*10, set([i[1] for i in instances[:10000]]))
         return instances[:10000]
 
         # return instances
@@ -233,7 +234,6 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             raise FileNotFoundError(msg)
 
         shuffle(instances)
-        print("***"*10, set([i[1] for i in instances[:10000]]))
         return instances[:10000]
 
         # return instances
