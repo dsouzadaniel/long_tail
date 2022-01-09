@@ -121,7 +121,7 @@ TRAIN_DATASET = 'N20_A20_TX2'
 DATASET_SIZE = 1281167
 if TRAIN_DATASET=='N20_A20_TX2':
     DATASET_SIZE = 1281152
-DATASET_SIZE = 10000
+DATASET_SIZE = 50000
 
 MSP_AUG_PCT = 0.2
 #####################################################
@@ -414,13 +414,13 @@ def main_worker(gpu, ngpus_per_node, args):
                     atypical_1hot), "Atypical 1 Hot is not equal to num of atypical"
 
                 # AUPR Data
-                noisy_aupr_random = average_precision_score(y_true=noisy_1hot,
-                                                            y_score=np.random.rand(len(orig_trainset)))
-                atypical_aupr_random = average_precision_score(y_true=atypical_1hot,
-                                                               y_score=np.random.rand(len(orig_trainset)))
+                noisy_aupr_random = round(average_precision_score(y_true=noisy_1hot,
+                                                            y_score=np.random.rand(len(orig_trainset))), 5)
+                atypical_aupr_random = round(average_precision_score(y_true=atypical_1hot,
+                                                               y_score=np.random.rand(len(orig_trainset))), 5)
 
-                noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_epoch_predictions)
-                atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_epoch_predictions)
+                noisy_aupr_sfmx = round(average_precision_score(y_true=noisy_1hot, y_score=-train_epoch_predictions), 5)
+                atypical_aupr_sfmx = round(average_precision_score(y_true=atypical_1hot, y_score=-train_epoch_predictions), 5)
 
                 collect_aupr_data.append(
                     (noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx, epoch))
