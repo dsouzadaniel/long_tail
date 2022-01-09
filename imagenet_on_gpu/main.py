@@ -121,6 +121,7 @@ TRAIN_DATASET = 'N20_A20_TX2'
 DATASET_SIZE = 1281167
 if TRAIN_DATASET=='N20_A20_TX2':
     DATASET_SIZE = 1281152
+DATASET_SIZE = 10000
 
 MSP_AUG_PCT = 0.2
 #####################################################
@@ -274,7 +275,6 @@ def main_worker(gpu, ngpus_per_node, args):
     dataset_props = {}
     dataset_props['traindir'] = traindir
     dataset_props['_using_longtail_dataset'] = _using_longtail_dataset
-    dataset_props['traindir'] = traindir
     dataset_props['size'] = DATASET_SIZE
 
 
@@ -378,7 +378,7 @@ def main_worker(gpu, ngpus_per_node, args):
         )
 
         # Write Predictons
-        collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = train_epoch_predictions.tolist()
+        collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
 
         if AUGMENT_SCHEDULE:
             # Reset the Augment 1-Hot at every epoch
@@ -539,7 +539,7 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
             print("Step Size Time : {0}".format(pretty_time_delta(time.time() - start_batch_time)))
             start_batch_time = time.time()
 
-    return top1.avg, losses.avg
+    return top1.avg.cpu(), losses.avg.cpu()
 
 
 def validate(val_loader, model, criterion, args):

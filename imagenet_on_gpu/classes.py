@@ -307,7 +307,7 @@ class LONGTAIL_IMAGENET(DatasetFolder):
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']]
+                   self._dataset_npz['filenames']][:10000]
         return dataset
 
     def __repr__(self):
@@ -410,5 +410,5 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']]
+                   self._dataset_npz['filenames']][:10000]
         return dataset
