@@ -107,7 +107,7 @@ class IMAGENET(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        return instances
+        return instances[:10000]
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
@@ -227,7 +227,7 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        return instances
+        return instances[:10000]
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
