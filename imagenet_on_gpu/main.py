@@ -539,7 +539,7 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
             print("Step Size Time : {0}".format(pretty_time_delta(time.time() - start_batch_time)))
             start_batch_time = time.time()
 
-    return round(top1.avg.cpu(),5), round(losses.avg,5)
+    return round(top1.avg.cpu().item(),5), round(losses.avg,5)
 
 
 def validate(val_loader, model, criterion, args):
@@ -582,7 +582,7 @@ def validate(val_loader, model, criterion, args):
 
         progress.display_summary()
 
-    return round(top1.avg.cpu(),5), round(losses.avg,5)
+    return round(top1.avg.cpu().item(),5), round(losses.avg,5)
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
