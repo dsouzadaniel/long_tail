@@ -285,6 +285,10 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self.selected_ixs_for_atypical = np.where(_indicator == -2)[0]
         self.selected_ixs_for_typical = np.where(_indicator == -1)[0]
 
+        self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<10000]
+        self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<10000]
+        self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<10000]
+
         self.class_ixs = [np.where(self.labels == c)[0] for c in range(len(classes))]
         self.num_of_dupes = self._dataset_npz['num_dupes_data'].item()
 
