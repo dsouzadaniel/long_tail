@@ -53,7 +53,7 @@ class IMAGENET(DatasetFolder):
             data = self.transforms(sample)
         else:
             data = sample
-        return ix, data, self.class_2_ix[target]
+        return ix, data, target
 
     def __len__(self):
         return len(self.dataset)
@@ -109,7 +109,7 @@ class IMAGENET(DatasetFolder):
             raise FileNotFoundError(msg)
 
         shuffle(instances)
-        print("###"*10, len(list(set([i[1] for i in instances[:10000]]))))
+        # print("###"*10, len(list(set([i[1] for i in instances[:10000]]))))
         return instances[:10000]
 
         # return instances
@@ -178,7 +178,7 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             data = self.transforms(sample)
         else:
             data = sample
-        return ix, data, self.class_2_ix[target]
+        return ix, data, target
 
     def __len__(self):
         return len(self.dataset)
