@@ -10,6 +10,7 @@ from torchvision.datasets import DatasetFolder
 from torch.utils.data import DataLoader
 from typing import Dict, List
 import os
+from random import shuffle
 
 # Imports
 class IMAGENET(DatasetFolder):
@@ -107,7 +108,11 @@ class IMAGENET(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
+        shuffle(instances)
         return instances[:10000]
+
+        # return instances
+
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
@@ -227,7 +232,10 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
+        shuffle(instances)
         return instances[:10000]
+
+        # return instances
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
