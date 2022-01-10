@@ -355,8 +355,29 @@ def main_worker(gpu, ngpus_per_node, args):
         #     train_sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args)
 
+        print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
+
+        if not dataset_props['_using_longtail_dataset']:
+            curr_trainset = classes.IMAGENET_DYNAMIC(augment_indicator=to_augment_next_epoch,
+                                                     num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+        else:
+            curr_trainset = classes.LONGTAIL_IMAGENET_DYNAMIC(train_directory=os.path.join(args.data, 'train'),
+                                                              dataset_npz=dataset_props['_train_npz'],
+                                                              augment_indicator=to_augment_next_epoch,
+                                                              num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+
+        if args.distributed:
+            train_sampler = torch.utils.data.distributed.DistributedSampler(curr_trainset)
+        else:
+            train_sampler = None
+
+        curr_trainloader = DataLoader(
+            curr_trainset,
+            batch_size=args.batch_size, shuffle=(train_sampler is None),
+            num_workers=args.workers, pin_memory=True, sampler=train_sampler
+        )
         # train for one epoch
-        train_acc, train_loss = train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epoch, args)
+        train_acc, train_loss = train(curr_trainloader, model, criterion, optimizer, epoch, dataset_props, args)
 
         # evaluate on validation set
         test_acc, test_loss = validate(val_loader, model, criterion, args)
@@ -462,39 +483,12 @@ def main_worker(gpu, ngpus_per_node, args):
         aupr_df.to_csv(os.path.join(WRITE_FOLDER, "aupr.csv"), index=False)
 
 
-def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epoch, args):
+def train(train_loader, model, criterion, optimizer, epoch, dataset_props, args):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-
-    print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
-
-    if not dataset_props['_using_longtail_dataset']:
-        curr_trainset = classes.IMAGENET_DYNAMIC(augment_indicator=to_augment_next_epoch,
-                                                num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
-    else:
-        curr_trainset = classes.LONGTAIL_IMAGENET_DYNAMIC(train_directory=os.path.join(args.data, 'train'),
-                                                          dataset_npz=dataset_props['_train_npz'],
-                                                         augment_indicator=to_augment_next_epoch,
-                                                         num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
-
-    if args.distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(curr_trainset)
-    else:
-        train_sampler = None
-
-    curr_trainloader = DataLoader(
-        curr_trainset,
-        batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler
-    )
-
-    progress = ProgressMeter(
-        len(curr_trainloader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
@@ -506,7 +500,12 @@ def train(model, criterion, optimizer, epoch, dataset_props, to_augment_next_epo
 
     start_batch_time = time.time()
 
-    for i, (ixs, images, target) in enumerate(curr_trainloader):
+    progress = ProgressMeter(
+        len(train_loader),
+        [batch_time, data_time, losses, top1, top5],
+        prefix="Epoch: [{}]".format(epoch))
+
+    for i, (ixs, images, target) in enumerate(train_loader):
 
         # measure data loading time
         data_time.update(time.time() - end)
