@@ -52,6 +52,7 @@ import numpy as np
 from torchvision.datasets import DatasetFolder
 from torchvision import transforms
 from PIL import Image
+from typing import Dict, List
 
 import tensorflow.compat.v1 as tf
 
