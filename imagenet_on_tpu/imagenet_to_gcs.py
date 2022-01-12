@@ -42,6 +42,7 @@ python3 imagenet_to_gcs.py \
 """
 
 import math
+import time
 import os
 import random
 from typing import Iterable, List, Mapping, Union, Tuple
@@ -127,10 +128,6 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self.selected_ixs_for_atypical = np.where(_indicator == -2)[0]
         self.selected_ixs_for_typical = np.where(_indicator == -1)[0]
 
-        self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
-        self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
-        self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
-
         self.class_ixs = [np.where(self.labels == c)[0] for c in range(len(classes))]
         self.num_of_dupes = self._dataset_npz['num_dupes_data'].item()
 
@@ -165,7 +162,7 @@ class LONGTAIL_IMAGENET(DatasetFolder):
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']][:50000]
+                   self._dataset_npz['filenames']]
         return dataset
 
     def __repr__(self):
@@ -467,6 +464,10 @@ def convert_to_tf_records(
                                                    dataset_npz=os.path.join(LONGTAIL_IMAGENET_DIR,
                                                                             longtail_dataset + '.npz'),
                                                    apply_transform=False)
+
+    time.sleep(10)
+    print(_imagenet_longtail)
+    time.sleep(10)
 
     training_files = [d[0] for d in _imagenet_longtail.dataset]
     training_synsets = [d[1] for d in _imagenet_longtail.dataset]
