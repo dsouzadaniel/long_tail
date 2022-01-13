@@ -490,13 +490,25 @@ def convert_to_tf_records(
     training_subsets = [training_subsets[i] for i in training_shuffle_idx]
     training_idxs = [training_idxs[i] for i in training_shuffle_idx]
 
-    # Glob all the validation files
-    validation_files = sorted(tf.gfile.Glob(
-        os.path.join(raw_data_dir, VALIDATION_DIRECTORY, '*.JPEG')))
 
-    # Get validation file synset labels from labels.txt
-    validation_synsets = tf.gfile.FastGFile(
-        os.path.join(raw_data_dir, LABELS_FILE), 'rb').read().splitlines()
+    #
+
+    # validation_files = sorted(tf.gfile.Glob(
+    #     os.path.join(raw_data_dir, VALIDATION_DIRECTORY, '*.JPEG')))
+    #
+    # # Get validation file synset labels from labels.txt
+    # validation_synsets = tf.gfile.FastGFile(
+    #     os.path.join(raw_data_dir, LABELS_FILE), 'rb').read().splitlines()
+    #
+
+    # # Glob all the validation files
+    validation_files = tf.gfile.Glob(
+        os.path.join(raw_data_dir, VALIDATION_DIRECTORY, '*', '*.JPEG'))
+
+    # Get validation file synset labels from the directory name
+    validation_synsets = [
+        os.path.basename(os.path.dirname(f)) for f in validation_files]
+    validation_synsets = list(map(lambda x: bytes(x, 'utf-8'), validation_synsets))
 
     validation_subsets = list(-1 * np.ones(len(validation_files), dtype=int))
     validation_idxs = list(np.arange(len(validation_files)))
@@ -505,6 +517,13 @@ def convert_to_tf_records(
     labels = {v: k + 1 for k, v in enumerate(
         sorted(set(validation_synsets + training_synsets)))}
 
+    # Create validation data
+    logging.info('Processing the validation data.')
+    validation_records = _process_dataset(
+        validation_files, validation_synsets, validation_subsets, validation_idxs, labels,
+        os.path.join(local_scratch_dir, VALIDATION_DIRECTORY),
+        VALIDATION_DIRECTORY, VALIDATION_SHARDS)
+
     # Create training data
     logging.info('Processing the training data.')
     training_records = _process_dataset(
@@ -512,12 +531,6 @@ def convert_to_tf_records(
         os.path.join(local_scratch_dir, TRAINING_DIRECTORY),
         TRAINING_DIRECTORY, TRAINING_SHARDS)
 
-    # Create validation data
-    logging.info('Processing the validation data.')
-    validation_records = _process_dataset(
-        validation_files, validation_synsets, validation_subsets, validation_idxs, labels,
-        os.path.join(local_scratch_dir, VALIDATION_DIRECTORY),
-        VALIDATION_DIRECTORY, VALIDATION_SHARDS)
 
     return training_records, validation_records
 
