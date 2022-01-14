@@ -2,6 +2,7 @@ import argparse
 
 from . import cifar_models
 from .tools import folder
+from .longtail import classes
 
 import os
 if int(os.environ.get("NOTEBOOK_MODE", 0)) == 1:
@@ -54,10 +55,14 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
             raise ValueError("Test data must be stored in dataset/test or {0}".format(test_path))
 
         if not only_val:
-            train_set = folder.ImageFolder(root=train_path, transform=transform_train,
-                                           label_mapping=label_mapping)
-        test_set = folder.ImageFolder(root=test_path, transform=transform_test,
-                                      label_mapping=label_mapping)
+            # train_set = folder.ImageFolder(root=train_path, transform=transform_train,
+            #                                label_mapping=label_mapping)
+            train_set = classes.IMAGENET(train_directory=train_path, apply_transform=True, apply_augmentation=True)
+
+        # test_set = folder.ImageFolder(root=test_path, transform=transform_test,
+        #                               label_mapping=label_mapping)
+        test_set = classes.IMAGENET_TEST(test_directory=test_path, class_2_ix=train_set.class_2_ix, apply_transform=True)
+
     else:
         if custom_class_args is None: custom_class_args = {}
         if not only_val:
