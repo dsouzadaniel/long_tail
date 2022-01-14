@@ -106,6 +106,7 @@ class DataPrefetcher():
         self.dataset = loader.dataset
         self.stream = ch.cuda.Stream()
         self.stop_after = stop_after
+        self.next_idx = None
         self.next_input = None
         self.next_target = None
 
@@ -114,12 +115,14 @@ class DataPrefetcher():
 
     def preload(self):
         try:
-            self.next_input, self.next_target = next(self.loaditer)
+            self.next_idx, self.next_input, self.next_target = next(self.loaditer)
         except StopIteration:
+            self.next_idx = None
             self.next_input = None
             self.next_target = None
             return
         with ch.cuda.stream(self.stream):
+            self.next_idx = self.next_idx.cuda(non_blocking=True)
             self.next_input = self.next_input.cuda(non_blocking=True)
             self.next_target = self.next_target.cuda(non_blocking=True)
 
@@ -129,6 +132,7 @@ class DataPrefetcher():
         self.preload()
         while self.next_input is not None:
             ch.cuda.current_stream().wait_stream(self.stream)
+            idx = self.next_idx
             input = self.next_input
             target = self.next_target
             self.preload()
