@@ -17,7 +17,6 @@ try:
     from .datasets import DATASETS
     from .train import train_model, eval_model
     from .tools import constants, helpers
-    from .longtail import classes
     from . import defaults, __version__
     from .defaults import check_and_fill_args
 except:
