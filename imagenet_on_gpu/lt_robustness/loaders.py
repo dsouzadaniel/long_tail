@@ -72,7 +72,7 @@ def make_loaders(workers, batch_size, transforms, data_path, data_aug=True,
                                 transform=transform_test, **custom_class_args)
 
     if not only_val:
-        attrs = ["samples", "train_data", "data"]
+        attrs = ["samples", "train_data", "dataset"]
         vals = {attr: hasattr(train_set, attr) for attr in attrs}
         assert any(vals.values()), f"dataset must expose one of {attrs}"
         train_sample_count = len(getattr(train_set,[k for k in vals if vals[k]][0]))
