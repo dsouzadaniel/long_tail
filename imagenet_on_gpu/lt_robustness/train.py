@@ -416,6 +416,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                 model, opt, epoch, args.adv_train, writer)
         last_epoch = (epoch == (args.epochs - 1))
 
+        prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
+                                         None, epoch, False, writer)
+
+        collect_mtrx_data.append((train_prec1, train_loss, prec1, nat_loss, epoch))
+
         # evaluate on validation set
         sd_info = {
             'model':model.state_dict(),
@@ -626,6 +631,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
     # epoch_preds = np.zeros(shape=(dataset_size))
     epoch_preds = -1 * np.ones(shape=(dataset_size))
+    print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
 
     # Softmax for Predictions
     softmax = torch.nn.Softmax(dim=-1)
@@ -700,7 +706,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         iterator.set_description(desc)
         iterator.refresh()
 
-    print("Total {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > 0)))
+    print("#"*10,"Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
 
     if writer is not None:
         prec_type = 'adv' if adv else 'nat'
