@@ -3,6 +3,7 @@ The main file, which exposes the robustness command-line tool, detailed in
 :doc:`this walkthrough <../example_usage/cli_usage>`.
 """
 
+from sklearn.metrics import average_precision_score
 from argparse import ArgumentParser
 import os
 import git

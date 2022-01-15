@@ -3,24 +3,24 @@
 
 # Set a seed value
 seed_value = 789
-# # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
-# import os
-# os.environ["PYTHONHASHSEED"] = str(seed_value)
-# # 2. Set `python` built-in pseudo-random generator at a fixed value
-# import random
-# random.seed(seed_value)
-# # 3. Set `numpy` pseudo-random generator at a fixed value
-# import numpy as np
-# np.random.seed(seed_value)
-# # 4. Set Torch seed at a fixed value
-# import torch
-# torch.manual_seed(seed_value)
-# # 5. Set TF seed at a fixed value
-# import tensorflow as tf
-# tf.random.set_seed(seed_value)
-# # 6. CuDNN settings
-# torch.backends.cudnn.benchmark = False
-# torch.backends.cudnn.deterministic = True
+# 1. Set `PYTHONHASHSEED` environment variable at a fixed value
+import os
+os.environ["PYTHONHASHSEED"] = str(seed_value)
+# 2. Set `python` built-in pseudo-random generator at a fixed value
+import random
+random.seed(seed_value)
+# 3. Set `numpy` pseudo-random generator at a fixed value
+import numpy as np
+np.random.seed(seed_value)
+# 4. Set Torch seed at a fixed value
+import torch
+torch.manual_seed(seed_value)
+# 5. Set TF seed at a fixed value
+import tensorflow as tf
+tf.random.set_seed(seed_value)
+# 6. CuDNN settings
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 import torch as ch
 import numpy as np
