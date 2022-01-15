@@ -335,6 +335,10 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     if not os.path.exists(WRITE_FOLDER):
         os.makedirs(name=WRITE_FOLDER)
 
+    TRAIN_PREDS_FOLDER = os.path.join(WRITE_FOLDER,'train_pred_npz_files')
+    if not os.path.exists(TRAIN_PREDS_FOLDER):
+        os.makedirs(name=TRAIN_PREDS_FOLDER)
+
     _using_longtail_dataset = True if args.longtail_dataset!=None else False
 
     if not _using_longtail_dataset:
@@ -386,7 +390,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     collect_mtrx_data = []
     collect_aupr_data = []
 
-    collect_predprob_train_data = {}
+    # collect_predprob_train_data = {}
 
     # Timestamp for training start time
     start_time = time.time()
@@ -416,13 +420,12 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                 model, opt, epoch, args.adv_train, writer)
         last_epoch = (epoch == (args.epochs - 1))
 
-        ctx = ch.enable_grad() if disable_no_grad else ch.no_grad()
-        with ctx:
-            prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
-                                             None, epoch, False, writer)
+        # ctx = ch.enable_grad() if disable_no_grad else ch.no_grad()
+        # with ctx:
+        #     prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
+        #                                      None, epoch, False, writer)
 
-        collect_mtrx_data.append((train_prec1, train_loss, prec1, nat_loss, epoch))
-
+        # round(top1.avg.cpu().item(), 5), round(losses.avg, 5)
         # evaluate on validation set
         sd_info = {
             'model':model.state_dict(),
@@ -448,6 +451,9 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             with ctx:
                 prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
                         None, epoch, False, writer)
+
+            collect_mtrx_data.append((round(train_prec1.cpu().item(), 5), round(train_loss, 5),
+                                      round(prec1.cpu().item(), 5), round(nat_loss, 5), epoch))
 
             # loader, model, epoch, input_adv_exs
             should_adv_eval = args.adv_eval or args.adv_train
@@ -486,7 +492,12 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         if has_attr(args, 'epoch_hook'): args.epoch_hook(model, log_info)
 
         # Write Predictons
-        collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
+        # collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
+
+        curr_train_predprob = np.array([round(n,5) for n in train_epoch_predictions.tolist()])
+        with open(os.path.join(TRAIN_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy')) as f:
+            np.save(f, curr_train_predprob)
+
 
         if AUGMENT_SCHEDULE:
             # Reset the Augment 1-Hot at every epoch
@@ -539,11 +550,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         ],
     )
 
-    collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
+    # collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
 
     # Write Files
     mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
-    collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
+    # collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
 
 
     # Write Additional Files( if using LongTail dataset)
