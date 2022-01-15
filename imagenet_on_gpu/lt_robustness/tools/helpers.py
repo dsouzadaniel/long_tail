@@ -137,7 +137,7 @@ class DataPrefetcher():
             target = self.next_target
             self.preload()
             count += 1
-            yield input, target
+            yield idx, input, target
             if type(self.stop_after) is int and (count > self.stop_after):
                 break
 

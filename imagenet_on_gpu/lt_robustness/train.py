@@ -1,17 +1,51 @@
+
+######### Setting Seeds for Reproducibility #########
+
+# Set a seed value
+seed_value = 789
+# 1. Set `PYTHONHASHSEED` environment variable at a fixed value
+import os
+os.environ["PYTHONHASHSEED"] = str(seed_value)
+# 2. Set `python` built-in pseudo-random generator at a fixed value
+import random
+random.seed(seed_value)
+# 3. Set `numpy` pseudo-random generator at a fixed value
+import numpy as np
+np.random.seed(seed_value)
+# 4. Set Torch seed at a fixed value
+import torch
+torch.manual_seed(seed_value)
+# 5. Set TF seed at a fixed value
+import tensorflow as tf
+tf.random.set_seed(seed_value)
+# 6. CuDNN settings
+# import config, loaders, classes
+import config, classes
+
+if config.REPRODUCIBLE:
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+else:
+    torch.backends.cudnn.benchmark = True
+
 import torch as ch
 import numpy as np
 import torch.nn as nn
 from torch.optim import SGD, lr_scheduler
 from torchvision.utils import make_grid
+from torch.utils.data import DataLoader
 from cox.utils import Parameters
 
 from .tools import helpers
 from .tools.helpers import AverageMeter, ckpt_at_epoch, has_attr
 from .tools import constants as consts
+from .longtail import classes
 import dill 
 import os
 import time
 import warnings
+from sklearn.metrics import average_precision_score
+import pandas as pd
 
 if int(os.environ.get("NOTEBOOK_MODE", 0)) == 1:
     from tqdm import tqdm_notebook as tqdm
@@ -150,14 +184,14 @@ def eval_model(args, model, loader, store):
     assert not hasattr(model, "module"), "model is already in DataParallel."
     model = ch.nn.DataParallel(model)
 
-    prec1, nat_loss = _model_loop(args, 'val', loader, 
+    prec1, nat_loss, _ = _model_loop(args, 'val', 50000, loader,
                                         model, None, 0, False, writer)
 
     adv_prec1, adv_loss = float('nan'), float('nan')
     if args.adv_eval: 
         args.eps = eval(str(args.eps)) if has_attr(args, 'eps') else None
         args.attack_lr = eval(str(args.attack_lr)) if has_attr(args, 'attack_lr') else None
-        adv_prec1, adv_loss = _model_loop(args, 'val', loader, 
+        adv_prec1, adv_loss, _ = _model_loop(args, 'val', loader,
                                         model, None, 0, True, writer)
     log_info = {
         'epoch':0,
@@ -174,7 +208,7 @@ def eval_model(args, model, loader, store):
     if store: store[consts.LOGS_TABLE].append_row(log_info)
     return log_info
 
-def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
+def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             store=None, update_params=None, disable_no_grad=False):
     """
     Main function for training a model. 
@@ -290,7 +324,57 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         args.custom_eps_multiplier = lambda t: np.interp([t], *zip(*eps_periods))[0]
 
     # Initial setup
-    train_loader, val_loader = loaders
+    MSP_AUG_PCT = 0.2
+    #####################################################
+    ADD_AUG_COPIES = 0
+    TGT_AUG_EPOCH_AFTER = 4
+
+    assert 0 <= MSP_AUG_PCT <= 1, "MSP_AUG_PCT must be between 0 and 1"
+
+    data_path = args.data
+    train_path = os.path.join(data_path, 'train')
+    test_path = os.path.join(data_path, 'val')
+
+    EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
+    WRITE_FOLDER = os.path.join("{0}_{1}".format(seed_value, args.longtail_dataset), EXP_NAME)
+    # Folder to collect epoch snapshots
+    if not os.path.exists(WRITE_FOLDER):
+        os.makedirs(name=WRITE_FOLDER)
+
+    _using_longtail_dataset = True if args.longtail_dataset!=None else False
+
+    if not _using_longtail_dataset:
+        print("{0}_Using Original({1}) Dataset_{0}".format("*" * 50, "IMAGENET"))
+        orig_trainset = classes.IMAGENET(train_directory=train_path, apply_transform=True, apply_augmentation=True)
+    else:
+        print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, args.longtail_dataset))
+        _train_npz = os.path.join(args.longtail_folder, 'LONGTAIL_IMAGENET', args.longtail_dataset + '.npz')
+        # dataset_props['_train_npz'] = _train_npz
+        orig_trainset = classes.LONGTAIL_IMAGENET(train_directory=train_path, dataset_npz=_train_npz, apply_augmentation=False)
+
+    print(orig_trainset)
+
+    #  Initialize to all 1s to augment the entire dataset
+    to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
+
+    # For No Augmentation, set below variables accordingly
+    if MSP_AUG_PCT == 0:
+        to_augment_next_epoch = np.zeros(shape=(len(orig_trainset)))
+
+    print("\n", "*" * 100)
+    print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting after Epoch {2}".format(
+        int(MSP_AUG_PCT * 100), ADD_AUG_COPIES, TGT_AUG_EPOCH_AFTER))
+
+    print("*" * 100, "\n")
+
+
+    orig_train_set = classes.IMAGENET(train_directory=train_path, apply_transform=True, apply_augmentation=True)
+    val_set = classes.IMAGENET_TEST(test_directory=test_path, class_2_ix=orig_train_set.class_2_ix, apply_transform=True)
+
+    val_loader = DataLoader(val_set, batch_size=args.batch_size,
+            shuffle=True, num_workers=args.workers, pin_memory=True)
+    val_loader = helpers.DataPrefetcher(val_loader)
+
     opt, schedule = make_optimizer_and_schedule(args, model, checkpoint, update_params)
 
     # Put the model into parallel mode
@@ -303,12 +387,38 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         best_prec1 = checkpoint[prec1_key] if prec1_key in checkpoint \
             else _model_loop(args, 'val', val_loader, model, None, start_epoch-1, args.adv_train, writer=None)[0]
 
+
+    # Main Training Loop
+    collect_mtrx_data = []
+    collect_aupr_data = []
+
+    collect_predprob_train_data = {}
+
     # Timestamp for training start time
     start_time = time.time()
 
     for epoch in range(start_epoch, args.epochs):
+
+        AUGMENT_SCHEDULE = (epoch >= TGT_AUG_EPOCH_AFTER)
+
+        print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
+
+        if not _using_longtail_dataset:
+            curr_trainset = classes.IMAGENET_DYNAMIC(augment_indicator=to_augment_next_epoch,
+                                                     num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+        else:
+            curr_trainset = classes.LONGTAIL_IMAGENET_DYNAMIC(train_directory=train_path,
+                                                              dataset_npz=_train_npz,
+                                                              augment_indicator=to_augment_next_epoch,
+                                                              num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+
+
+        curr_train_loader = DataLoader(curr_trainset, batch_size=args.batch_size,
+                                  shuffle=True, num_workers=args.workers, pin_memory=True)
+        curr_train_loader = helpers.DataPrefetcher(curr_train_loader)
+
         # train for one epoch
-        train_prec1, train_loss = _model_loop(args, 'train', train_loader, 
+        train_prec1, train_loss, train_epoch_predictions = _model_loop(args, 'train', len(curr_trainset), curr_train_loader,
                 model, opt, epoch, args.adv_train, writer)
         last_epoch = (epoch == (args.epochs - 1))
 
@@ -335,7 +445,7 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
             # log + get best
             ctx = ch.enable_grad() if disable_no_grad else ch.no_grad() 
             with ctx:
-                prec1, nat_loss = _model_loop(args, 'val', val_loader, model, 
+                prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
                         None, epoch, False, writer)
 
             # loader, model, epoch, input_adv_exs
@@ -374,9 +484,86 @@ def train_model(args, model, loaders, *, checkpoint=None, dp_device_ids=None,
         if schedule: schedule.step()
         if has_attr(args, 'epoch_hook'): args.epoch_hook(model, log_info)
 
+        # Write Predictons
+        collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
+
+        if AUGMENT_SCHEDULE:
+            # Reset the Augment 1-Hot at every epoch
+            to_augment_next_epoch.fill(0)
+
+            print("Clearing the Augment 1-hot Sum: {1} ".format(epoch, np.sum(to_augment_next_epoch)))
+            # ##################### Choosing using SFMX over the entire dataset #####################
+
+            curr_sfmx_scores = train_epoch_predictions
+
+            _, min_sfmx_ix = ch.topk(
+                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * MSP_AUG_PCT), largest=False
+            )
+            # Prep for AUGMENT in the next epoch
+            to_augment_next_epoch[min_sfmx_ix] = 1
+
+            # Additional Information Available if using LongTail Datasets
+            if _using_longtail_dataset:
+                # AUPR Calculation
+                noisy_1hot, atypical_1hot = np.zeros(len(orig_trainset)), np.zeros(len(orig_trainset))
+                np.put(a=noisy_1hot, ind=orig_trainset.selected_ixs_for_noisy, v=1)
+                np.put(a=atypical_1hot, ind=orig_trainset.selected_ixs_for_atypical, v=1)
+
+                assert len(orig_trainset.selected_ixs_for_noisy) == sum(
+                    noisy_1hot), "Noisy 1 Hot is not equal to num of noisy"
+                assert len(orig_trainset.selected_ixs_for_atypical) == sum(
+                    atypical_1hot), "Atypical 1 Hot is not equal to num of atypical"
+
+                # AUPR Data
+                noisy_aupr_random = round(average_precision_score(y_true=noisy_1hot,
+                                                            y_score=np.random.rand(len(orig_trainset))), 5)
+                atypical_aupr_random = round(average_precision_score(y_true=atypical_1hot,
+                                                               y_score=np.random.rand(len(orig_trainset))), 5)
+
+                noisy_aupr_sfmx = round(average_precision_score(y_true=noisy_1hot, y_score=-train_epoch_predictions), 5)
+                atypical_aupr_sfmx = round(average_precision_score(y_true=atypical_1hot, y_score=-train_epoch_predictions), 5)
+
+                collect_aupr_data.append(
+                    (noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx, epoch))
+
+    # Write Metric Files
+    mtrx_df = pd.DataFrame(
+        data=collect_mtrx_data,
+        columns=[
+            "train_accuracy",
+            "train_loss",
+            "test_accuracy",
+            "test_loss",
+            "recorded_at_epoch",
+        ],
+    )
+
+    collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
+
+    # Write Files
+    mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
+    collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
+
+
+    # Write Additional Files( if using LongTail dataset)
+    if _using_longtail_dataset:
+
+        aupr_df = pd.DataFrame(
+            data=collect_aupr_data,
+            columns=[
+                "noisy_aupr_random",
+                "atypical_aupr_random",
+                "noisy_aupr_sfmx",
+                "atypical_aupr_sfmx",
+                "recorded_at_epoch",
+            ],
+        )
+
+        # Write Files
+        aupr_df.to_csv(os.path.join(WRITE_FOLDER, "aupr.csv"), index=False)
     return model
 
-def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
+def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, writer):
     """
     *Internal function* (refer to the train_model and eval_model functions for
     how to train and evaluate models).
@@ -387,6 +574,7 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         args (object) : an arguments object (see
             :meth:`~robustness.train.train_model` for list of arguments
         loop_type ('train' or 'val') : whether we are training or evaluating
+        dataset_size : length of the dataset
         loader (iterable) : an iterable loader of the form 
             `(image_batch, label_batch)`
         model (AttackerModel) : model to train/evaluate
@@ -441,7 +629,10 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         }
 
     iterator = tqdm(enumerate(loader), total=len(loader))
-    for i, (inp, target) in iterator:
+
+    epoch_preds = np.zeros(shape=(dataset_size))
+
+    for i, (idx, inp, target) in iterator:
        # measure data loading time
         target = target.cuda(non_blocking=True)
         output, final_inp = model(inp, target=target, make_adv=adv,
@@ -451,8 +642,10 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
         if len(loss.shape) > 0: loss = loss.mean()
 
         model_logits = output[0] if (type(output) is tuple) else output
+        epoch_preds[idx[idx < dataset_size]] = model_logits[idx < dataset_size]
+        print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
 
-        # measure accuracy and record loss
+    # measure accuracy and record loss
         top1_acc = float('nan')
         top5_acc = float('nan')
         try:
@@ -514,5 +707,5 @@ def _model_loop(args, loop_type, loader, model, opt, epoch, adv, writer):
             writer.add_scalar('_'.join([prec_type, loop_type, d]), v.avg,
                               epoch)
 
-    return top1.avg, losses.avg
+    return top1.avg, losses.avg, epoch_preds
 

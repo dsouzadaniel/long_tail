@@ -37,13 +37,17 @@ def main(args, store=None):
     # MAKE DATASET AND LOADERS
     data_path = os.path.expandvars(args.data)
     dataset = DATASETS[args.dataset](data_path)
+    # Verfy here
+    print("Using Folder : {0}".format(args.longtail_folder))
+    print("Using Dataset : {0}".format(args.longtail_dataset))
 
-    train_loader, val_loader = dataset.make_loaders(args.workers,
-                    args.batch_size, data_aug=bool(args.data_aug))
-
-    train_loader = helpers.DataPrefetcher(train_loader)
-    val_loader = helpers.DataPrefetcher(val_loader)
-    loaders = (train_loader, val_loader)
+    #
+    # train_loader, val_loader = dataset.make_loaders(args.workers,
+    #                 args.batch_size, data_aug=bool(args.data_aug))
+    #
+    # train_loader = helpers.DataPrefetcher(train_loader)
+    # val_loader = helpers.DataPrefetcher(val_loader)
+    # loaders = (train_loader, val_loader)
 
     # MAKE MODEL
     model, checkpoint = make_and_restore_model(arch=args.arch,
@@ -51,11 +55,11 @@ def main(args, store=None):
     if 'module' in dir(model): model = model.module
 
     print(args)
-    if args.eval_only:
-        return eval_model(args, model, val_loader, store=store)
+    # if args.eval_only:
+    #     return eval_model(args, model, val_loader, store=store)
 
     if not args.resume_optimizer: checkpoint = None
-    model = train_model(args, model, loaders, store=store,
+    model = train_model(args, model, store=store,
                                     checkpoint=checkpoint)
     return model
 
