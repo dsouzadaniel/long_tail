@@ -642,7 +642,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         # logits = model_logits.detach().cpu().numpy()
         target_softmax_output = softmax(model_logits.clone().cpu().detach())[np.arange(len(target)), target]
         epoch_preds[idx[idx < dataset_size]] = target_softmax_output[idx < dataset_size]
-        print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
+        # print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
 
     # measure accuracy and record loss
         top1_acc = float('nan')
@@ -697,6 +697,8 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
         iterator.set_description(desc)
         iterator.refresh()
+
+    print("Total {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > 0)))
 
     if writer is not None:
         prec_type = 'adv' if adv else 'nat'
