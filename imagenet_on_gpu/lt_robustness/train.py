@@ -19,14 +19,8 @@ torch.manual_seed(seed_value)
 import tensorflow as tf
 tf.random.set_seed(seed_value)
 # 6. CuDNN settings
-# import config, loaders, classes
-import config, classes
-
-if config.REPRODUCIBLE:
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-else:
-    torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
 
 import torch as ch
 import numpy as np
