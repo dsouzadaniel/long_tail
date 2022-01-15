@@ -51,6 +51,22 @@ try:
 except Exception as e:
     warnings.warn('Could not import amp.')
 
+
+def pretty_time_delta(seconds):
+    seconds = int(seconds)
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%dd %dh %dm %ds' % (days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%dh %dm %ds' % (hours, minutes, seconds)
+    elif minutes > 0:
+        return '%dm %ds' % (minutes, seconds)
+    else:
+        return '%ds' % (seconds,)
+
+
 def check_required_args(args, eval_only=False):
     """
     Check that the required training arguments are present.
@@ -323,6 +339,8 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     ADD_AUG_COPIES = 0
     TGT_AUG_EPOCH_AFTER = 4
 
+    start_track_time = time.time()
+
     assert 0 <= MSP_AUG_PCT <= 1, "MSP_AUG_PCT must be between 0 and 1"
 
     data_path = args.data
@@ -573,6 +591,9 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
         # Write Files
         aupr_df.to_csv(os.path.join(WRITE_FOLDER, "aupr.csv"), index=False)
+
+    print("*"*10,"Total Training Time : {0}".format(pretty_time_delta(time.time() - start_track_time)),"*"*10)
+
     return model
 
 def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, writer):
