@@ -625,6 +625,8 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
     iterator = tqdm(enumerate(loader), total=len(loader))
 
     epoch_preds = np.zeros(shape=(dataset_size))
+    # Softmax for Predictions
+    softmax = torch.nn.Softmax(dim=-1)
 
     for i, (idx, inp, target) in iterator:
        # measure data loading time
@@ -637,8 +639,9 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
         model_logits = output[0] if (type(output) is tuple) else output
         idx = idx.cpu().numpy()
-        logits = model_logits.detach().cpu().numpy()
-        epoch_preds[idx[idx < dataset_size]] = logits[idx < dataset_size]
+        # logits = model_logits.detach().cpu().numpy()
+        target_softmax_output = softmax(model_logits.clone().cpu().detach())[np.arange(len(target)), target]
+        epoch_preds[idx[idx < dataset_size]] = target_softmax_output[idx < dataset_size]
         print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
 
     # measure accuracy and record loss
