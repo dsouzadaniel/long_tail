@@ -116,6 +116,8 @@ MODEL_LOADER_ARGS = [
     ['resume-optimizer', [0, 1], 'whether to also resume optimizers', 0],
     ['data-aug', [0, 1], 'whether to use data augmentation', 1],
     ['mixed-precision', [0, 1], 'whether to use MP training (faster)', 0],
+    ['longtail-folder', str, 'path to the longtail datasets', None],
+    ['longtail-dataset', str, 'which longtail dataset to use', None],
 ]
 """
 Arguments essential for constructing the model and dataloaders that will be fed
