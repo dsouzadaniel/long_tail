@@ -636,6 +636,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         if len(loss.shape) > 0: loss = loss.mean()
 
         model_logits = output[0] if (type(output) is tuple) else output
+        idx = idx.cpu()
         epoch_preds[idx[idx < dataset_size]] = model_logits[idx < dataset_size]
         print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
 
