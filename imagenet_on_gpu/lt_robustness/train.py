@@ -624,7 +624,9 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
     iterator = tqdm(enumerate(loader), total=len(loader))
 
-    epoch_preds = np.zeros(shape=(dataset_size))
+    # epoch_preds = np.zeros(shape=(dataset_size))
+    epoch_preds = -1 * np.ones(shape=(dataset_size))
+
     # Softmax for Predictions
     softmax = torch.nn.Softmax(dim=-1)
 
