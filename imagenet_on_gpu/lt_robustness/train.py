@@ -637,7 +637,8 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
         model_logits = output[0] if (type(output) is tuple) else output
         idx = idx.cpu()
-        epoch_preds[idx[idx < dataset_size]] = model_logits[idx < dataset_size]
+        logits = model_logits.cpu().copy()
+        epoch_preds[idx[idx < dataset_size]] = logits[idx < dataset_size]
         print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
 
     # measure accuracy and record loss
