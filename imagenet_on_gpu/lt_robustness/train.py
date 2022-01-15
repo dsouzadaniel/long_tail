@@ -495,7 +495,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         # collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
 
         curr_train_predprob = np.array([round(n,5) for n in train_epoch_predictions.tolist()])
-        with open(os.path.join(TRAIN_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy')) as f:
+        with open(os.path.join(TRAIN_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy'), 'wb') as f:
             np.save(f, curr_train_predprob)
 
 
