@@ -416,8 +416,10 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                 model, opt, epoch, args.adv_train, writer)
         last_epoch = (epoch == (args.epochs - 1))
 
-        prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
-                                         None, epoch, False, writer)
+        ctx = ch.enable_grad() if disable_no_grad else ch.no_grad()
+        with ctx:
+            prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
+                                             None, epoch, False, writer)
 
         collect_mtrx_data.append((train_prec1, train_loss, prec1, nat_loss, epoch))
 
