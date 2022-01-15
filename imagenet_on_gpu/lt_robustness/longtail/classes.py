@@ -62,7 +62,7 @@ class IMAGENET(DatasetFolder):
         classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
         if not classes:
             raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
-        print("Classes Found : {0}".format(len(classes)))
+        # print("Classes Found : {0}".format(len(classes)))
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         return classes, class_to_idx
 
@@ -108,11 +108,11 @@ class IMAGENET(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        shuffle(instances)
+        # shuffle(instances)
         # print("###"*10, len(list(set([i[1] for i in instances[:50000]]))))
-        return instances[:50000]
+        # return instances[:50000]
 
-        # return instances
+        return instances
 
 
     def __repr__(self):
@@ -187,7 +187,7 @@ class IMAGENET_DYNAMIC(DatasetFolder):
         classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
         if not classes:
             raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
-        print("Classes Found : {0}".format(len(classes)))
+        # print("Classes Found : {0}".format(len(classes)))
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         return classes, class_to_idx
 
@@ -233,10 +233,10 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        shuffle(instances)
-        return instances[:50000]
+        # shuffle(instances)
+        # return instances[:50000]
 
-        # return instances
+        return instances
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
@@ -285,9 +285,9 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self.selected_ixs_for_atypical = np.where(_indicator == -2)[0]
         self.selected_ixs_for_typical = np.where(_indicator == -1)[0]
 
-        self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
-        self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
-        self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
+        # self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
+        # self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
+        # self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
 
         self.class_ixs = [np.where(self.labels == c)[0] for c in range(len(classes))]
         self.num_of_dupes = self._dataset_npz['num_dupes_data'].item()
@@ -311,7 +311,7 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
         if not classes:
             raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
-        print("Classes Found : {0}".format(len(classes)))
+        # print("Classes Found : {0}".format(len(classes)))
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         return classes, class_to_idx
 
@@ -322,8 +322,10 @@ class LONGTAIL_IMAGENET(DatasetFolder):
             return img.convert('RGB')
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
+        # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+        #            self._dataset_npz['filenames']][:50000]
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']][:50000]
+                   self._dataset_npz['filenames']]
         return dataset
 
     def __repr__(self):
@@ -414,7 +416,7 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
         classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
         if not classes:
             raise FileNotFoundError(f"Couldn't find any class folder in {directory}.")
-        print("Classes Found : {0}".format(len(classes)))
+        # print("Classes Found : {0}".format(len(classes)))
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
         return classes, class_to_idx
 
@@ -425,8 +427,10 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
             return img.convert('RGB')
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
+        # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+        #            self._dataset_npz['filenames']][:50000]
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']][:50000]
+                   self._dataset_npz['filenames']]
         return dataset
 
 class IMAGENET_TEST(DatasetFolder):
@@ -513,11 +517,11 @@ class IMAGENET_TEST(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        shuffle(instances)
+        # shuffle(instances)
         # print("###"*10, len(list(set([i[1] for i in instances[:50000]]))))
-        return instances[:50000]
+        # return instances[:50000]
 
-        # return instances
+        return instances
 
 
     def __repr__(self):

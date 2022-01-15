@@ -503,7 +503,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             # Reset the Augment 1-Hot at every epoch
             to_augment_next_epoch.fill(0)
 
-            print("Clearing the Augment 1-hot Sum: {1} ".format(epoch, np.sum(to_augment_next_epoch)))
+            # print("Clearing the Augment 1-hot Sum: {1} ".format(epoch, np.sum(to_augment_next_epoch)))
             # ##################### Choosing using SFMX over the entire dataset #####################
 
             curr_sfmx_scores = train_epoch_predictions
@@ -644,7 +644,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
     # epoch_preds = np.zeros(shape=(dataset_size))
     epoch_preds = -1 * np.ones(shape=(dataset_size))
-    print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
+    # print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
 
     # Softmax for Predictions
     softmax = torch.nn.Softmax(dim=-1)
@@ -719,7 +719,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         iterator.set_description(desc)
         iterator.refresh()
 
-    print("#"*10,"Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
+    # print("#"*10,"Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
 
     if writer is not None:
         prec_type = 'adv' if adv else 'nat'
