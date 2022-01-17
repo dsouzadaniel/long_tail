@@ -6,6 +6,7 @@ The main file, which exposes the robustness command-line tool, detailed in
 from sklearn.metrics import average_precision_score
 from argparse import ArgumentParser
 import os
+import sys
 import git
 import torch as ch
 
@@ -60,7 +61,7 @@ def main(args, store=None):
     for param in model.parameters():
         print(param.data.sum())
 
-    break
+    sys.exit("Error message")
 
     print(args)
     # if args.eval_only:
