@@ -61,6 +61,8 @@ def main(args, store=None):
     for param in model.parameters():
         print(param.data.sum())
 
+    print("Model Weights Sum--> {0}".format(sum([p.data().cpu().item() for p in model.parameters()])))
+
     sys.exit("Error message")
 
     print(args)
