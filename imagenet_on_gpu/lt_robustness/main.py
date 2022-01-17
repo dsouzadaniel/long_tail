@@ -58,7 +58,9 @@ def main(args, store=None):
     print(model)
 
     for param in model.parameters():
-        print(param.data)
+        print(param.data.sum())
+
+    break
 
     print(args)
     # if args.eval_only:
