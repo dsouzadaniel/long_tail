@@ -55,6 +55,9 @@ def main(args, store=None):
             dataset=dataset, resume_path=args.resume)
     if 'module' in dir(model): model = model.module
 
+    for param in model.parameters():
+        print(param)
+
     print(args)
     # if args.eval_only:
     #     return eval_model(args, model, val_loader, store=store)
