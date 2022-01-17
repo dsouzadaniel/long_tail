@@ -56,7 +56,7 @@ def main(args, store=None):
             dataset=dataset, resume_path=args.resume)
     if 'module' in dir(model): model = model.module
 
-    print("[REPRODUCIBILITY_CHECK] : Model Weights Sum--> {0}".format(sum([p.data.cpu().sum().item() for p in model.parameters()])))
+    # print("[REPRODUCIBILITY_CHECK] : Model Weights Sum--> {0}".format(sum([p.data.cpu().sum().item() for p in model.parameters()])))
 
     print(args)
     # if args.eval_only:
