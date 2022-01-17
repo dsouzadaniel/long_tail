@@ -56,11 +56,6 @@ def main(args, store=None):
             dataset=dataset, resume_path=args.resume)
     if 'module' in dir(model): model = model.module
 
-    print(model)
-
-    for param in model.parameters():
-        print(param.data.sum())
-
     print("Model Weights Sum--> {0}".format(sum([p.data.cpu().sum().item() for p in model.parameters()])))
 
     sys.exit("Error message")
