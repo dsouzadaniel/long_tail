@@ -118,6 +118,7 @@ MODEL_LOADER_ARGS = [
     ['mixed-precision', [0, 1], 'whether to use MP training (faster)', 0],
     ['longtail-folder', str, 'path to the longtail datasets', None],
     ['longtail-dataset', str, 'which longtail dataset to use', None],
+    ['msp-aug-pct', float, 'how much of the bottom MSP % to augment'],
 ]
 """
 Arguments essential for constructing the model and dataloaders that will be fed

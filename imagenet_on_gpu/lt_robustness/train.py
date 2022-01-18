@@ -334,7 +334,8 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         args.custom_eps_multiplier = lambda t: np.interp([t], *zip(*eps_periods))[0]
 
     # Initial setup
-    MSP_AUG_PCT = 0.0
+    MSP_AUG_PCT = args.msp_aug_pct
+    print("***** USING {0} FOR AUG PCT *****".format(MSP_AUG_PCT))
     #####################################################
     ADD_AUG_COPIES = 0
     TGT_AUG_EPOCH_AFTER = 4
