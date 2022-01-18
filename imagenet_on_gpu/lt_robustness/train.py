@@ -335,7 +335,6 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
     # Initial setup
     MSP_AUG_PCT = args.msp_aug_pct
-    print("***** USING {0} FOR AUG PCT *****".format(MSP_AUG_PCT))
     #####################################################
     ADD_AUG_COPIES = 0
     TGT_AUG_EPOCH_AFTER = 4
