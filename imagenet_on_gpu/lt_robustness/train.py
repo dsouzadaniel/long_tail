@@ -574,7 +574,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             new_labels = curr_labels
 
             _, ix_for_relabelling =ch.topk(
-                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
+                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=True
             )
 
 
