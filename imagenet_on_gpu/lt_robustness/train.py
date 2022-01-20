@@ -730,7 +730,7 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         target_pred_probs[idx[idx < dataset_size]] = target_softmax_output[idx < dataset_size]
 
         model_softmax_output = softmax(model_logits.clone().cpu().detach())
-        model_argmax_preds[idx[idx < dataset_size]] = torch.argmax(model_softmax_output, dim=-1, keepdim=False)[idx[idx < dataset_size]]
+        model_argmax_preds[idx[idx < dataset_size]] = torch.argmax(model_softmax_output, dim=-1, keepdim=False)[idx < dataset_size]
         # print("Total Predictions Written : {0}".format(np.sum(target_pred_probs > 0)))
 
     # measure accuracy and record loss
