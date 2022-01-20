@@ -350,7 +350,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     test_path = os.path.join(data_path, 'val')
 
     EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-    WRITE_FOLDER = os.path.join("{0}_{1}".format(seed_value, args.longtail_dataset), EXP_NAME)
+    WRITE_FOLDER = os.path.join("50K_{0}_{1}".format(seed_value, args.longtail_dataset), EXP_NAME)
     # Folder to collect epoch snapshots
     if not os.path.exists(WRITE_FOLDER):
         os.makedirs(name=WRITE_FOLDER)
