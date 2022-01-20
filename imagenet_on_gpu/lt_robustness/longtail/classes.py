@@ -334,14 +334,6 @@ class LONGTAIL_IMAGENET(DatasetFolder):
                    self._dataset_npz['filenames']]
         return dataset
 
-    def make_dataset_new_labels(self, new_labels:List[str]):
-        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
-        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
-                        ]
-        print("New Labels Loaded!")
-        return
-
-
     def __repr__(self):
         _num_of_noisy_ixs = len(self.selected_ixs_for_noisy)
         _num_of_atypical_ixs = len(self.selected_ixs_for_atypical)
@@ -457,7 +449,6 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
                         ]
         self.dataset = self.make_dataset(base_dataset=_new_base_dataset)
         print("New Labels Loaded!")
-        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
         return
 
 class IMAGENET_TEST(DatasetFolder):
