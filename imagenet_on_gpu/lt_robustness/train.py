@@ -373,10 +373,12 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     print(orig_trainset)
 
     # Initialize for Relabel
+    print("Reading Default Labels")
     curr_labels = [d[2] for d in orig_trainset]
-    with open(os.path.join('LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+    print("Writing Default Labels")
+    with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
         np.save(f, curr_labels)
-
+    print("Done!")
     #  Initialize to all 1s to augment the entire dataset
     to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
 
