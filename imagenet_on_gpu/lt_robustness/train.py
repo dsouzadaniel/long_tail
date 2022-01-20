@@ -194,14 +194,14 @@ def eval_model(args, model, loader, store):
     assert not hasattr(model, "module"), "model is already in DataParallel."
     model = ch.nn.DataParallel(model)
 
-    prec1, nat_loss, _ = _model_loop(args, 'val', 50000, loader,
+    prec1, nat_loss, _, _ = _model_loop(args, 'val', 50000, loader,
                                         model, None, 0, False, writer)
 
     adv_prec1, adv_loss = float('nan'), float('nan')
     if args.adv_eval: 
         args.eps = eval(str(args.eps)) if has_attr(args, 'eps') else None
         args.attack_lr = eval(str(args.attack_lr)) if has_attr(args, 'attack_lr') else None
-        adv_prec1, adv_loss, _ = _model_loop(args, 'val', loader,
+        adv_prec1, adv_loss, _, _ = _model_loop(args, 'val', loader,
                                         model, None, 0, True, writer)
     log_info = {
         'epoch':0,
@@ -335,6 +335,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
     # Initial setup
     MSP_AUG_PCT = args.msp_aug_pct
+    RELABEL_PCT = args.relabel_pct
     #####################################################
     ADD_AUG_COPIES = 0
     TGT_AUG_EPOCH_AFTER = 4
@@ -342,6 +343,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     start_track_time = time.time()
 
     assert 0 <= MSP_AUG_PCT <= 1, "MSP_AUG_PCT must be between 0 and 1"
+    assert 0 <= RELABEL_PCT <= 1, "RELABEL_PCT must be between 0 and 1"
 
     data_path = args.data
     train_path = os.path.join(data_path, 'train')
@@ -370,6 +372,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
     print(orig_trainset)
 
+    # Initialize for Relabel
+    curr_labels = [d[2] for d in orig_trainset]
+    with open(os.path.join('LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+        np.save(f, curr_labels)
+
     #  Initialize to all 1s to augment the entire dataset
     to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
 
@@ -383,9 +390,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
     print("*" * 100, "\n")
 
-
-    orig_train_set = classes.IMAGENET(train_directory=train_path, apply_transform=True, apply_augmentation=True)
-    val_set = classes.IMAGENET_TEST(test_directory=test_path, class_2_ix=orig_train_set.class_2_ix, apply_transform=True)
+    val_set = classes.IMAGENET_TEST(test_directory=test_path, class_2_ix=orig_trainset.class_2_ix, apply_transform=True)
 
     val_loader = DataLoader(val_set, batch_size=args.batch_size,
             shuffle=True, num_workers=args.workers, pin_memory=True)
@@ -407,6 +412,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     # Main Training Loop
     collect_mtrx_data = []
     collect_aupr_data = []
+    collect_label_change_data = []
 
     # collect_predprob_train_data = {}
 
@@ -429,18 +435,24 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                                                               num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
 
 
+        if AUGMENT_SCHEDULE:
+            curr_labels = np.load('LATEST_RELABELS_FOR_DATASET.npy').tolist()
+            print("Using New Labels")
+            curr_trainset.make_dataset_new_labels(new_labels=[orig_trainset.ix_2_class[i] for i in curr_labels])
+
+
         curr_train_loader = DataLoader(curr_trainset, batch_size=args.batch_size,
                                   shuffle=True, num_workers=args.workers, pin_memory=True)
         curr_train_loader = helpers.DataPrefetcher(curr_train_loader)
 
         # train for one epoch
-        train_prec1, train_loss, train_epoch_predictions = _model_loop(args, 'train', len(curr_trainset), curr_train_loader,
+        train_prec1, train_loss, train_target_probs, train_argmax_predictions = _model_loop(args, 'train', len(orig_trainset), curr_train_loader,
                 model, opt, epoch, args.adv_train, writer)
         last_epoch = (epoch == (args.epochs - 1))
 
         # ctx = ch.enable_grad() if disable_no_grad else ch.no_grad()
         # with ctx:
-        #     prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
+        #     prec1, nat_loss, _, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
         #                                      None, epoch, False, writer)
 
         # round(top1.avg.cpu().item(), 5), round(losses.avg, 5)
@@ -467,7 +479,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             # log + get best
             ctx = ch.enable_grad() if disable_no_grad else ch.no_grad() 
             with ctx:
-                prec1, nat_loss, _ = _model_loop(args, 'val', len(val_set), val_loader, model,
+                prec1, nat_loss, _, _  = _model_loop(args, 'val', len(val_set), val_loader, model,
                         None, epoch, False, writer)
 
             collect_mtrx_data.append((round(train_prec1.cpu().item(), 5), round(train_loss, 5),
@@ -510,12 +522,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         if has_attr(args, 'epoch_hook'): args.epoch_hook(model, log_info)
 
         # Write Predictons
-        # collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_epoch_predictions.tolist()]
+        # collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_target_probs.tolist()]
 
-        curr_train_predprob = np.array([round(n,5) for n in train_epoch_predictions.tolist()])
+        curr_train_target_probs = np.array([round(n,5) for n in train_target_probs.tolist()])
         with open(os.path.join(TRAIN_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy'), 'wb') as f:
-            np.save(f, curr_train_predprob)
-
+            np.save(f, curr_train_target_probs)
 
         if AUGMENT_SCHEDULE:
             # Reset the Augment 1-Hot at every epoch
@@ -524,7 +535,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             # print("Clearing the Augment 1-hot Sum: {1} ".format(epoch, np.sum(to_augment_next_epoch)))
             # ##################### Choosing using SFMX over the entire dataset #####################
 
-            curr_sfmx_scores = train_epoch_predictions
+            curr_sfmx_scores = train_target_probs
 
             _, min_sfmx_ix = ch.topk(
                 ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * MSP_AUG_PCT), largest=False
@@ -550,11 +561,30 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                 atypical_aupr_random = round(average_precision_score(y_true=atypical_1hot,
                                                                y_score=np.random.rand(len(orig_trainset))), 5)
 
-                noisy_aupr_sfmx = round(average_precision_score(y_true=noisy_1hot, y_score=-train_epoch_predictions), 5)
-                atypical_aupr_sfmx = round(average_precision_score(y_true=atypical_1hot, y_score=-train_epoch_predictions), 5)
+                noisy_aupr_sfmx = round(average_precision_score(y_true=noisy_1hot, y_score=-train_target_probs), 5)
+                atypical_aupr_sfmx = round(average_precision_score(y_true=atypical_1hot, y_score=-train_target_probs), 5)
 
                 collect_aupr_data.append(
                     (noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx, epoch))
+
+
+            ####### RELABEL #########
+            new_labels = curr_labels
+
+            _, ix_for_relabelling =ch.topk(
+                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
+            )
+
+
+            # Relabel for next epoch
+            label_change = sum(new_labels[ix_for_relabelling]==train_argmax_predictions[ix_for_relabelling])
+            collect_label_change_data.append((label_change, epoch))
+            print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
+            new_labels[ix_for_relabelling]  = train_argmax_predictions[ix_for_relabelling]
+
+            with open(os.path.join('LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+                np.save(f, new_labels)
+
 
     # Write Metric Files
     mtrx_df = pd.DataFrame(
@@ -568,10 +598,20 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         ],
     )
 
+    relabel_df = pd.DataFrame(
+        data = collect_label_change_data,
+        columns=[
+            "labels_changed",
+            "epoch",
+        ]
+    )
+
     # collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
 
     # Write Files
     mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
+    relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
+
     # collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
 
 
@@ -663,9 +703,11 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
 
     iterator = tqdm(enumerate(loader), total=len(loader))
 
-    # epoch_preds = np.zeros(shape=(dataset_size))
-    epoch_preds = -1 * np.ones(shape=(dataset_size))
-    # print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
+    # target_pred_probs = np.zeros(shape=(dataset_size))
+    target_pred_probs = -1 * np.ones(shape=(dataset_size))
+    model_argmax_preds = -1 * np.ones(shape=(dataset_size))
+    # print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(target_pred_probs > -1)))
+    print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(model_argmax_preds > -1)))
 
     # Softmax for Predictions
     softmax = torch.nn.Softmax(dim=-1)
@@ -683,8 +725,11 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         idx = idx.cpu().numpy()
         # logits = model_logits.detach().cpu().numpy()
         target_softmax_output = softmax(model_logits.clone().cpu().detach())[np.arange(len(target)), target]
-        epoch_preds[idx[idx < dataset_size]] = target_softmax_output[idx < dataset_size]
-        # print("Total Predictions Written : {0}".format(np.sum(epoch_preds > 0)))
+        target_pred_probs[idx[idx < dataset_size]] = target_softmax_output[idx < dataset_size]
+
+        model_softmax_output = softmax(model_logits.clone().cpu().detach())
+        model_argmax_preds[idx[idx < dataset_size]] = torch.argmax(model_softmax_output, dim=-1, keepdim=False)[idx[idx < dataset_size]]
+        # print("Total Predictions Written : {0}".format(np.sum(target_pred_probs > 0)))
 
     # measure accuracy and record loss
         top1_acc = float('nan')
@@ -740,7 +785,8 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
         iterator.set_description(desc)
         iterator.refresh()
 
-    # print("#"*10,"Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(epoch_preds > -1)))
+    # print("#"*10,"Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(target_pred_probs > -1)))
+    print("#" * 10, "Post-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(model_argmax_preds > -1)))
 
     if writer is not None:
         prec_type = 'adv' if adv else 'nat'
@@ -750,5 +796,5 @@ def _model_loop(args, loop_type, dataset_size, loader, model, opt, epoch, adv, w
             writer.add_scalar('_'.join([prec_type, loop_type, d]), v.avg,
                               epoch)
 
-    return top1.avg, losses.avg, epoch_preds
+    return top1.avg, losses.avg, target_pred_probs, model_argmax_preds
 

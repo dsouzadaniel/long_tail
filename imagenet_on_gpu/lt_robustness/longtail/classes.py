@@ -8,7 +8,7 @@ import torch
 
 from torchvision.datasets import DatasetFolder
 from torch.utils.data import DataLoader
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import os
 from random import shuffle
 
@@ -108,11 +108,10 @@ class IMAGENET(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        # shuffle(instances)
-        # print("###"*10, len(list(set([i[1] for i in instances[:50000]]))))
-        # return instances[:50000]
+        shuffle(instances)
+        return instances[:50000]
 
-        return instances
+        # return instances
 
 
     def __repr__(self):
@@ -233,10 +232,17 @@ class IMAGENET_DYNAMIC(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        # shuffle(instances)
-        # return instances[:50000]
+        shuffle(instances)
+        return instances[:50000]
 
-        return instances
+        # return instances
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
+                        ]
+        print("New Labels Loaded!")
+        return
 
     def __repr__(self):
         repr_str = f'*** {self.__class__.__name__}({self.dataset_name})'
@@ -285,9 +291,9 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self.selected_ixs_for_atypical = np.where(_indicator == -2)[0]
         self.selected_ixs_for_typical = np.where(_indicator == -1)[0]
 
-        # self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
-        # self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
-        # self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
+        self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
+        self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
+        self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
 
         self.class_ixs = [np.where(self.labels == c)[0] for c in range(len(classes))]
         self.num_of_dupes = self._dataset_npz['num_dupes_data'].item()
@@ -322,11 +328,19 @@ class LONGTAIL_IMAGENET(DatasetFolder):
             return img.convert('RGB')
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
-        # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-        #            self._dataset_npz['filenames']][:50000]
         dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']]
+                   self._dataset_npz['filenames']][:50000]
+        # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+        #            self._dataset_npz['filenames']]
         return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
+                        ]
+        print("New Labels Loaded!")
+        return
+
 
     def __repr__(self):
         _num_of_noisy_ixs = len(self.selected_ixs_for_noisy)
@@ -355,8 +369,6 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
         self.num_additional_copies = num_additional_copies
         self._dataset_npz = np.load(dataset_npz, allow_pickle=True)
         classes, self.class_2_ix = self.find_classes(train_directory)
-        # Get Original Dataset without any transform/augmentation
-        _orig_dataset = LONGTAIL_IMAGENET(train_directory=train_directory, dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
 
         self.augment_and_transform = transforms.Compose(
             [
@@ -380,18 +392,9 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
 
-        expanded_dataset = []
-        for ix in self.ixs_to_augment:
-            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
-
-        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
-            expanded_dataset
-        )
-
-        # Add the newly added ixs
-        self.ixs_to_augment = np.concatenate((self.ixs_to_augment,np.arange(len(_orig_dataset),(len(_orig_dataset)+len(self.ixs_to_augment)))))
-
-        self.dataset = _orig_dataset + expanded_dataset
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = LONGTAIL_IMAGENET(train_directory=train_directory, dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
+        self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
@@ -426,12 +429,36 @@ class LONGTAIL_IMAGENET_DYNAMIC(DatasetFolder):
             img = Image.open(f)
             return img.convert('RGB')
 
-    def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
-        # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-        #            self._dataset_npz['filenames']][:50000]
-        dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']]
+    # def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
+    #     # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+    #     #            self._dataset_npz['filenames']][:50000]
+    #     dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+    #                self._dataset_npz['filenames']]
+    #     return dataset
+
+    def make_dataset(self, base_dataset: List[Tuple]):
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(expanded_dataset)
+
+         # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate(
+            (self.ixs_to_augment, np.arange(len(base_dataset), (len(base_dataset) + len(self.ixs_to_augment)))))
+
+        dataset = base_dataset + expanded_dataset
         return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        _new_base_dataset = [(old_path, new_label) for (old_path, old_label), new_label in zip(self.dataset, new_labels)
+                        ]
+        self.dataset = self.make_dataset(base_dataset=_new_base_dataset)
+        print("New Labels Loaded!")
+        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
+        return
 
 class IMAGENET_TEST(DatasetFolder):
 
