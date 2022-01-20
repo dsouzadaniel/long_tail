@@ -438,7 +438,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
 
         if AUGMENT_SCHEDULE:
-            curr_labels = np.load(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy').tolist()
+            curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy')).tolist()
             print("Using New Labels")
             curr_trainset.make_dataset_new_labels(new_labels=[orig_trainset.ix_2_class[i] for i in curr_labels])
 
@@ -584,7 +584,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
             new_labels[ix_for_relabelling]  = train_argmax_predictions[ix_for_relabelling]
 
-            with open(os.path.join('LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+            with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
                 np.save(f, new_labels)
 
 
