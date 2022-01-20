@@ -377,7 +377,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     curr_labels = [d[1] for d in orig_trainset.dataset]
     print("Writing Default Labels")
     with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
-        np.save(f, [orig_trainset.class_2_ix[c] for c in curr_labels])
+        np.save(f, np.array([orig_trainset.class_2_ix[c] for c in curr_labels],dtype=float))
     print("Done!")
     #  Initialize to all 1s to augment the entire dataset
     to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
@@ -579,11 +579,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
 
             # Relabel for next epoch
-            print("IXS : {0}".format(ix_for_relabelling))
-            print(new_labels[ix_for_relabelling])
-            print(train_argmax_predictions[ix_for_relabelling])
+            print("IXS : {0}".format(ix_for_relabelling[:10]))
+            print(new_labels[ix_for_relabelling][:10])
+            print(train_argmax_predictions[ix_for_relabelling][:10])
 
-            label_change = sum(new_labels[ix_for_relabelling]==train_argmax_predictions[ix_for_relabelling])
+            label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling]==train_argmax_predictions[ix_for_relabelling])
             collect_label_change_data.append((label_change, epoch))
             print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
             new_labels[ix_for_relabelling]  = train_argmax_predictions[ix_for_relabelling]
