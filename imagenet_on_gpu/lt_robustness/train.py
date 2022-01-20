@@ -377,7 +377,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     curr_labels = [d[1] for d in orig_trainset.dataset]
     print("Writing Default Labels")
     with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
-        np.save(f, curr_labels)
+        np.save(f, [orig_trainset.class_2_ix[c] for c in curr_labels])
     print("Done!")
     #  Initialize to all 1s to augment the entire dataset
     to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
