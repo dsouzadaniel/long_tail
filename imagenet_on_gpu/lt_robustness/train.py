@@ -438,9 +438,9 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
 
         if AUGMENT_SCHEDULE:
-            curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy')).tolist()
+            curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'))
             print("Using New Labels")
-            curr_trainset.make_dataset_new_labels(new_labels=[orig_trainset.ix_2_class[i] for i in curr_labels])
+            curr_trainset.make_dataset_new_labels(new_labels=[orig_trainset.ix_2_class[i] for i in curr_labels.tolist()])
 
 
         curr_train_loader = DataLoader(curr_trainset, batch_size=args.batch_size,
