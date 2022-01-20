@@ -374,7 +374,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
     # Initialize for Relabel
     print("Reading Default Labels")
-    curr_labels = [d[2] for d in orig_trainset]
+    curr_labels = [d[2] for d in orig_trainset.dataset]
     print("Writing Default Labels")
     with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
         np.save(f, curr_labels)
