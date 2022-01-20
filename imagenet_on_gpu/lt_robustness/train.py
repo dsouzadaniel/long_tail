@@ -579,6 +579,10 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
 
 
             # Relabel for next epoch
+            print("IXS : {0}".format(ix_for_relabelling))
+            print(new_labels[ix_for_relabelling])
+            print(train_argmax_predictions[ix_for_relabelling])
+
             label_change = sum(new_labels[ix_for_relabelling]==train_argmax_predictions[ix_for_relabelling])
             collect_label_change_data.append((label_change, epoch))
             print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
