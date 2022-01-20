@@ -338,7 +338,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     RELABEL_PCT = args.relabel_pct
     #####################################################
     ADD_AUG_COPIES = 0
-    TGT_AUG_EPOCH_AFTER = 4
+    TGT_AUG_EPOCH_AFTER = 1
 
     start_track_time = time.time()
 
