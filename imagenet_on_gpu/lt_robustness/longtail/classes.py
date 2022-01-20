@@ -108,10 +108,10 @@ class IMAGENET(DatasetFolder):
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
 
-        shuffle(instances)
-        return instances[:50000]
+        # shuffle(instances)
+        # return instances[:50000]
 
-        # return instances
+        return instances
 
 
     def __repr__(self):
@@ -231,11 +231,11 @@ class IMAGENET_DYNAMIC(DatasetFolder):
         if empty_classes:
             msg = f"Found no valid file for the classes {', '.join(sorted(empty_classes))}. "
             raise FileNotFoundError(msg)
+        #
+        # shuffle(instances)
+        # return instances[:50000]
 
-        shuffle(instances)
-        return instances[:50000]
-
-        # return instances
+        return instances
 
     def make_dataset_new_labels(self, new_labels:List[str]):
         assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
@@ -291,9 +291,9 @@ class LONGTAIL_IMAGENET(DatasetFolder):
         self.selected_ixs_for_atypical = np.where(_indicator == -2)[0]
         self.selected_ixs_for_typical = np.where(_indicator == -1)[0]
 
-        self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
-        self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
-        self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
+        # self.selected_ixs_for_noisy = self.selected_ixs_for_noisy[self.selected_ixs_for_noisy<50000]
+        # self.selected_ixs_for_atypical = self.selected_ixs_for_atypical[self.selected_ixs_for_atypical<50000]
+        # self.selected_ixs_for_typical = self.selected_ixs_for_typical[self.selected_ixs_for_typical<50000]
 
         self.class_ixs = [np.where(self.labels == c)[0] for c in range(len(classes))]
         self.num_of_dupes = self._dataset_npz['num_dupes_data'].item()
@@ -328,10 +328,10 @@ class LONGTAIL_IMAGENET(DatasetFolder):
             return img.convert('RGB')
 
     def make_dataset(self, directory: str, class_2_ix: Dict[str, int]):
-        dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-                   self._dataset_npz['filenames']][:50000]
         # dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
-        #            self._dataset_npz['filenames']]
+        #            self._dataset_npz['filenames']][:50000]
+        dataset = [(os.path.join(directory, str(d[0]).split('_')[0], str(d[0])), str(d[1])) for d in
+                   self._dataset_npz['filenames']]
         return dataset
 
     def make_dataset_new_labels(self, new_labels:List[str]):

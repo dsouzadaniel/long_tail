@@ -338,7 +338,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     RELABEL_PCT = args.relabel_pct
     #####################################################
     ADD_AUG_COPIES = 0
-    TGT_AUG_EPOCH_AFTER = 1
+    TGT_AUG_EPOCH_AFTER = 4
 
     start_track_time = time.time()
 
@@ -350,7 +350,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     test_path = os.path.join(data_path, 'val')
 
     EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-    WRITE_FOLDER = os.path.join("50K_{0}_{1}".format(seed_value, args.longtail_dataset), EXP_NAME)
+    WRITE_FOLDER = os.path.join("{0}_RELABEL_{1}_{2}".format(seed_value, args.relabel_pct, args.longtail_dataset), EXP_NAME)
     # Folder to collect epoch snapshots
     if not os.path.exists(WRITE_FOLDER):
         os.makedirs(name=WRITE_FOLDER)
@@ -373,12 +373,12 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     print(orig_trainset)
 
     # Initialize for Relabel
-    print("Reading Default Labels")
+    # print("Reading Default Labels")
     curr_labels = [d[1] for d in orig_trainset.dataset]
-    print("Writing Default Labels")
+    # print("Writing Default Labels")
     with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
         np.save(f, np.array([orig_trainset.class_2_ix[c] for c in curr_labels],dtype=float))
-    print("Done!")
+    # print("Done!")
     #  Initialize to all 1s to augment the entire dataset
     to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
 
@@ -573,15 +573,14 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             ####### RELABEL #########
             new_labels = curr_labels
 
-            _, ix_for_relabelling =ch.topk(
-                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=True
+            _, ix_for_relabelling = ch.topk(
+                ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
             )
 
-
             # Relabel for next epoch
-            print("IXS : {0}".format(ix_for_relabelling[:10]))
-            print(new_labels[ix_for_relabelling][:10])
-            print(train_argmax_predictions[ix_for_relabelling][:10])
+            # print("IXS : {0}".format(ix_for_relabelling[:10]))
+            # print(new_labels[ix_for_relabelling][:10])
+            # print(train_argmax_predictions[ix_for_relabelling][:10])
 
             label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling]==train_argmax_predictions[ix_for_relabelling])
             collect_label_change_data.append((label_change, epoch))
