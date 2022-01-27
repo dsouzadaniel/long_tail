@@ -576,7 +576,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
             _, ix_for_relabelling = ch.topk(
                 ch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
             )
-
+            ix_for_relabelling = ix_for_relabelling.numpy()
             # Relabel for next epoch
             # print("IXS : {0}".format(ix_for_relabelling[:10]))
             # print(new_labels[ix_for_relabelling][:10])
