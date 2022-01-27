@@ -53,7 +53,7 @@ RELABEL_PCT = 0.01
 #####################################################
 
 ADD_AUG_COPIES = 0
-TGT_AUG_EPOCH_AFTER = 4
+TGT_AUG_EPOCH_AFTER = 1
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
