@@ -49,20 +49,22 @@ print("DEVICE -> {0}".format(device))
 TRAIN_DATASET = 'N20_A20_TX2'
 
 MSP_AUG_PCT = 0.2
-RELABEL_PCT = 0.01
+# RELABEL_PCT = 0.01
+RELABEL_PCT = [0.01] * config.EPOCHS
+RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
 #####################################################
 
 ADD_AUG_COPIES = 0
 TGT_AUG_EPOCH_AFTER = 4
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
-assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
+# assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
-print("Relabel PCT : {0}".format(RELABEL_PCT))
+print("Relabel PCT : {0}".format(RELABEL_PCT_STR))
 EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-WRITE_FOLDER = os.path.join("C10_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT, TRAIN_DATASET), EXP_NAME)
+WRITE_FOLDER = os.path.join("C10_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
@@ -322,7 +324,7 @@ for epoch in tqdm(range(config.EPOCHS)):
         new_labels = np.array(curr_labels)
 
         _, ix_for_relabelling = torch.topk(
-            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
+            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT[epoch]), largest=False
         )
         ix_for_relabelling = ix_for_relabelling.numpy()
 
