@@ -84,6 +84,7 @@ curr_labels = [d[1] for d in orig_trainset.dataset]
 with open(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
     np.save(f, np.array([c for c in curr_labels], dtype=int))
 
+
 #  Initialize to all 1s to augment the entire dataset
 to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
 
