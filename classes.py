@@ -1,6 +1,7 @@
 # Libraries
 import os
 import numpy as np
+from typing import List, Tuple
 from PIL import Image
 from collections import Counter
 from torch.utils.data import Dataset
@@ -74,9 +75,6 @@ class CIFAR10_DYNAMIC(Dataset):
         self.augment_indicator = augment_indicator
         self.num_additional_copies = num_additional_copies
 
-        # Get Original Dataset without any transform/augmentation
-        _orig_dataset = CIFAR10(apply_augmentation=False).dataset
-
         self.augment_and_transform = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
@@ -99,25 +97,38 @@ class CIFAR10_DYNAMIC(Dataset):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
 
-        expanded_dataset = []
-        for ix in self.ixs_to_augment:
-            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
-
-        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
-            expanded_dataset
-        )
-        self.dataset = list(_orig_dataset) + expanded_dataset
-
-        # Add the newly added ixs
-        self.ixs_to_augment = np.concatenate(
-            (self.ixs_to_augment, np.arange(len(_orig_dataset), len(self.dataset))))
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = CIFAR10(apply_augmentation=False).dataset
+        self.dataset = self.make_dataset(base_dataset=_orig_dataset)
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
 
+    def make_dataset(self, base_dataset: List[Tuple]):
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(expanded_dataset)
+
+         # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate(
+            (self.ixs_to_augment, np.arange(len(base_dataset), (len(base_dataset) + len(self.ixs_to_augment)))))
+
+        dataset = base_dataset + expanded_dataset
+        return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
+                        ]
+        print("New Labels Loaded!")
+        return
+
     def __getitem__(self, ix):
         added_ix = self.shuffled_ix_mapping[ix]
-        image, label = self.dataset[added_ix]
+        image, target = self.dataset[added_ix]
 
         # Check if the ix is of interest to augment
         if added_ix in self.ixs_to_augment:
@@ -125,7 +136,7 @@ class CIFAR10_DYNAMIC(Dataset):
         else:
             data = self.transform(image)
 
-        return added_ix, data, label
+        return added_ix, data, target
 
     def __len__(self):
         return len(self.dataset)
@@ -158,12 +169,10 @@ class LONGTAIL_CIFAR10(Dataset):
 
         _dataset_npz = np.load(dataset_npz)
 
-        self.dataset = [(Image.fromarray(image_array), label) for image_array, label in
-                        zip(list(_dataset_npz['image_data']), _dataset_npz['label_data'])]
+        self.dataset = self.make_dataset(_dataset_npz)
 
         _labels = np.array(_dataset_npz['label_data'])
         self.dataset_name = _dataset_npz['repr_data']
-
 
         self.num_of_dupes = _dataset_npz['num_dupes_data']
 
@@ -187,11 +196,16 @@ class LONGTAIL_CIFAR10(Dataset):
             [np.where(_labels == c)[0] for c in range(len(self.classes))]
         )
 
+    def make_dataset(self, _dataset_npz):
+        dataset = [(Image.fromarray(image_array), label) for image_array, label in
+         zip(list(_dataset_npz['image_data']), _dataset_npz['label_data'])]
+        return dataset
+
     def __getitem__(self, ix):
-        data, target = self.dataset[ix]
+        data, label = self.dataset[ix]
         if self.transforms:
             data = self.transforms(data)
-        return ix, data, target
+        return ix, data, label
 
     def __len__(self):
         return len(self.dataset)
@@ -227,9 +241,6 @@ class LONGTAIL_CIFAR10_DYNAMIC(Dataset):
         self.augment_indicator = augment_indicator
         self.num_additional_copies = num_additional_copies
 
-        # Get Original Dataset without any transform/augmentation
-        _orig_dataset = LONGTAIL_CIFAR10(dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
-
         self.augment_and_transform = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
@@ -252,22 +263,36 @@ class LONGTAIL_CIFAR10_DYNAMIC(Dataset):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator==1)[0]
 
-        expanded_dataset = []
-        for ix in self.ixs_to_augment:
-            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = LONGTAIL_CIFAR10(dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
+        self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
-        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
-            expanded_dataset
-        )
-
-        # Add the newly added ixs
-        self.ixs_to_augment = np.concatenate((self.ixs_to_augment,np.arange(len(_orig_dataset),(len(_orig_dataset)+len(self.ixs_to_augment)))))
-
-        self.dataset = _orig_dataset + expanded_dataset
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
 
+    def make_dataset(self, base_dataset: List[Tuple]):
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(expanded_dataset)
+
+         # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate(
+            (self.ixs_to_augment, np.arange(len(base_dataset), (len(base_dataset) + len(self.ixs_to_augment)))))
+
+        dataset = base_dataset + expanded_dataset
+        return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        _new_base_dataset = [(old_path, new_label) for (old_path, old_label), new_label in zip(self.dataset, new_labels)
+                        ]
+        self.dataset = self.make_dataset(base_dataset=_new_base_dataset)
+        print("New Labels Loaded!")
+        return
 
     def __getitem__(self, ix):
         added_ix = self.shuffled_ix_mapping[ix]
@@ -377,9 +402,6 @@ class CIFAR100_DYNAMIC(Dataset):
         self.augment_indicator = augment_indicator
         self.num_additional_copies = num_additional_copies
 
-        # Get Original Dataset without any transform/augmentation
-        _orig_dataset = CIFAR100(apply_augmentation=False).dataset
-
         self.augment_and_transform = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
@@ -402,21 +424,35 @@ class CIFAR100_DYNAMIC(Dataset):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
 
-        expanded_dataset = []
-        for ix in self.ixs_to_augment:
-            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
 
-        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
-            expanded_dataset
-        )
-        self.dataset = list(_orig_dataset) + expanded_dataset
-
-        # Add the newly added ixs
-        self.ixs_to_augment = np.concatenate(
-            (self.ixs_to_augment, np.arange(len(_orig_dataset), len(self.dataset))))
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = CIFAR100(apply_augmentation=False).dataset
+        self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
+
+    def make_dataset(self, base_dataset: List[Tuple]):
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(expanded_dataset)
+
+         # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate(
+            (self.ixs_to_augment, np.arange(len(base_dataset), (len(base_dataset) + len(self.ixs_to_augment)))))
+
+        dataset = base_dataset + expanded_dataset
+        return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
+                        ]
+        print("New Labels Loaded!")
+        return
 
     def __getitem__(self, ix):
         added_ix = self.shuffled_ix_mapping[ix]
@@ -461,8 +497,7 @@ class LONGTAIL_CIFAR100(Dataset):
 
         _dataset_npz = np.load(dataset_npz)
 
-        self.dataset = [(Image.fromarray(image_array), label) for image_array, label in
-                        zip(list(_dataset_npz['image_data']), _dataset_npz['label_data'])]
+        self.dataset = self.make_dataset(_dataset_npz)
 
         _labels = np.array(_dataset_npz['label_data'])
         self.dataset_name = _dataset_npz['repr_data']
@@ -579,6 +614,11 @@ class LONGTAIL_CIFAR100(Dataset):
             [np.where(_labels == c)[0] for c in range(len(self.classes))]
         )
 
+    def make_dataset(self, _dataset_npz):
+        dataset = [(Image.fromarray(image_array), label) for image_array, label in
+         zip(list(_dataset_npz['image_data']), _dataset_npz['label_data'])]
+        return dataset
+
     def __getitem__(self, ix):
         data, target = self.dataset[ix]
         if self.transforms:
@@ -619,10 +659,6 @@ class LONGTAIL_CIFAR100_DYNAMIC(Dataset):
         self.augment_indicator = augment_indicator
         self.num_additional_copies = num_additional_copies
 
-        # Get Original Dataset without any transform/augmentation
-        _orig_dataset = LONGTAIL_CIFAR100(dataset_npz=dataset_npz, apply_transform=False,
-                                          apply_augmentation=False).dataset
-
         self.augment_and_transform = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
@@ -645,22 +681,35 @@ class LONGTAIL_CIFAR100_DYNAMIC(Dataset):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator == 1)[0]
 
-        expanded_dataset = []
-        for ix in self.ixs_to_augment:
-            expanded_dataset.extend([_orig_dataset[ix] for _ in range(self.num_additional_copies)])
-
-        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(
-            expanded_dataset
-        )
-
-        # Add the newly added ixs
-        self.ixs_to_augment = np.concatenate(
-            (self.ixs_to_augment, np.arange(len(_orig_dataset), (len(_orig_dataset) + len(self.ixs_to_augment)))))
-
-        self.dataset = _orig_dataset + expanded_dataset
+        # Get Original Dataset without any transform/augmentation
+        _orig_dataset = LONGTAIL_CIFAR100(dataset_npz=dataset_npz, apply_transform=False,
+                                          apply_augmentation=False).dataset
+        self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
+
+    def make_dataset(self, base_dataset: List[Tuple]):
+
+        expanded_dataset = []
+        for ix in self.ixs_to_augment:
+            expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+
+        assert len(expanded_dataset) == np.sum(self.augment_indicator) * self.num_additional_copies, len(expanded_dataset)
+
+         # Add the newly added ixs
+        self.ixs_to_augment = np.concatenate(
+            (self.ixs_to_augment, np.arange(len(base_dataset), (len(base_dataset) + len(self.ixs_to_augment)))))
+
+        dataset = base_dataset + expanded_dataset
+        return dataset
+
+    def make_dataset_new_labels(self, new_labels:List[str]):
+        assert len(self.dataset) == len(new_labels), "New Labels aren't the same size as the dataset!"
+        self.dataset = [(old_path, new_label) for (old_path, old_label),new_label in zip(self.dataset, new_labels)
+                        ]
+        print("New Labels Loaded!")
+        return
 
     def __getitem__(self, ix):
         added_ix = self.shuffled_ix_mapping[ix]

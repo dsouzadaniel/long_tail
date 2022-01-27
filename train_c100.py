@@ -59,7 +59,7 @@ assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar100' else True
 
 EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-WRITE_FOLDER = os.path.join("{0}_{1}".format(seed_value, TRAIN_DATASET), EXP_NAME)
+WRITE_FOLDER = os.path.join("C100_{0}_{1}".format(seed_value, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
