@@ -134,7 +134,7 @@ scheduler = optim.lr_scheduler.MultiStepLR(
 target_pred_probs = -1 * np.ones(shape=(len(orig_trainset)))
 model_argmax_preds = -1 * np.ones(shape=(len(orig_trainset)))
 # print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(target_pred_probs > -1)))
-print("#" * 10, "Pre-Epoch Predictions Written : {1}".format(np.sum(model_argmax_preds > -1)))
+print("#" * 10, "Pre-Epoch Predictions Written : {0}".format(np.sum(model_argmax_preds > -1)))
 
 test_epoch_predictions = np.zeros(shape=(len(testset)))
 
