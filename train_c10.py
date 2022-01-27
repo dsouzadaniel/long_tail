@@ -318,11 +318,12 @@ for epoch in tqdm(range(config.EPOCHS)):
             collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx,epoch))
 
         ####### RELABEL #########
-        new_labels = curr_labels
+        new_labels = np.array(curr_labels)
 
         _, ix_for_relabelling = torch.topk(
             torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
         )
+        ix_for_relabelling = ix_for_relabelling.numpy()
 
         # Relabel for next epoch
         # print("IXS : {0}".format(ix_for_relabelling[:10]))
