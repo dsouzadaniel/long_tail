@@ -329,6 +329,15 @@ for epoch in tqdm(range(config.EPOCHS)):
         # print(new_labels[ix_for_relabelling][:10])
         # print(train_argmax_predictions[ix_for_relabelling][:10])
 
+        print(type(ix_for_relabelling))
+        print(type(new_labels))
+        print(type(model_argmax_preds))
+
+        print("*"*10)
+        print(ix_for_relabelling.shape)
+        print(new_labels.shape)
+        print(model_argmax_preds.shape)
+
         label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling]==model_argmax_preds[ix_for_relabelling])
         collect_label_change_data.append((label_change, epoch))
         print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
