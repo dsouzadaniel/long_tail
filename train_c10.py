@@ -53,13 +53,14 @@ RELABEL_PCT = 0.01
 #####################################################
 
 ADD_AUG_COPIES = 0
-TGT_AUG_EPOCH_AFTER = 1
+TGT_AUG_EPOCH_AFTER = 4
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
+print("Relabel PCT : {0}".format(RELABEL_PCT))
 EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
 WRITE_FOLDER = os.path.join("C10_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT, TRAIN_DATASET), EXP_NAME)
 
@@ -329,16 +330,6 @@ for epoch in tqdm(range(config.EPOCHS)):
         # print("IXS : {0}".format(ix_for_relabelling[:10]))
         # print(new_labels[ix_for_relabelling][:10])
         # print(train_argmax_predictions[ix_for_relabelling][:10])
-
-        print(type(ix_for_relabelling))
-        print(type(new_labels))
-        print(type(model_argmax_preds))
-
-        print("*"*10)
-        print(ix_for_relabelling.shape)
-        print(new_labels.shape)
-        print(model_argmax_preds.shape)
-
         label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling]==model_argmax_preds[ix_for_relabelling])
         collect_label_change_data.append((label_change, epoch))
         print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
