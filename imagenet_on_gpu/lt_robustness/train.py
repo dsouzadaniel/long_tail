@@ -336,6 +336,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     # Initial setup
     MSP_AUG_PCT = args.msp_aug_pct
     RELABEL_PCT = args.relabel_pct
+    RELABEL_EPOCH = args.relabel_epoch
     #####################################################
     ADD_AUG_COPIES = 0
     TGT_AUG_EPOCH_AFTER = 4
@@ -424,6 +425,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     for epoch in range(start_epoch, args.epochs):
 
         AUGMENT_SCHEDULE = (epoch >= TGT_AUG_EPOCH_AFTER)
+        RELABEL_SCHEDULE = AUGMENT_SCHEDULE if RELABEL_EPOCH==-1 else (epoch == RELABEL_EPOCH)
 
         print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
 
@@ -569,7 +571,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
                 collect_aupr_data.append(
                     (noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx, epoch))
 
-
+        if RELABEL_SCHEDULE:
             ####### RELABEL #########
             new_labels = curr_labels
 

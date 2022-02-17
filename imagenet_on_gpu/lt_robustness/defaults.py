@@ -119,7 +119,8 @@ MODEL_LOADER_ARGS = [
     ['longtail-folder', str, 'path to the longtail datasets', None],
     ['longtail-dataset', str, 'which longtail dataset to use', None],
     ['msp-aug-pct', float, 'how much of the bottom MSP % to augment',REQ],
-    ['relabel-pct',float,'how much of the bottom MSP examples to relabel',0.0]
+    ['relabel-pct',float,'how much of the bottom MSP examples to relabel',0.0],
+    ['relabel-epoch',int,'only relabel at a specific epoch(default is every aug epoch)',-1]
 ]
 """
 Arguments essential for constructing the model and dataloaders that will be fed
