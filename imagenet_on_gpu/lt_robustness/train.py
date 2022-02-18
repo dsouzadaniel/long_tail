@@ -351,7 +351,7 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     test_path = os.path.join(data_path, 'val')
 
     EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-    if RELABEL_PCT==-1:
+    if RELABEL_EPOCH==-1:
         WRITE_FOLDER = os.path.join(
             "TEMP_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT, args.longtail_dataset),
             EXP_NAME)
