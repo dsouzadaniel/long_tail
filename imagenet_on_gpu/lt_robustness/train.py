@@ -361,9 +361,13 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
     if not os.path.exists(WRITE_FOLDER):
         os.makedirs(name=WRITE_FOLDER)
 
-    TRAIN_PREDS_FOLDER = os.path.join(WRITE_FOLDER,'train_pred_npz_files')
-    if not os.path.exists(TRAIN_PREDS_FOLDER):
-        os.makedirs(name=TRAIN_PREDS_FOLDER)
+    TARGET_PROBS_FOLDER = os.path.join(WRITE_FOLDER,'target_probs_npz_files')
+    if not os.path.exists(TARGET_PROBS_FOLDER):
+        os.makedirs(name=TARGET_PROBS_FOLDER)
+
+    MODEL_PREDS_FOLDER = os.path.join(WRITE_FOLDER,'model_preds_npz_files')
+    if not os.path.exists(MODEL_PREDS_FOLDER):
+        os.makedirs(name=MODEL_PREDS_FOLDER)
 
     _using_longtail_dataset = True if args.longtail_dataset!=None else False
 
@@ -534,8 +538,11 @@ def train_model(args, model, *, checkpoint=None, dp_device_ids=None,
         # collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = [round(n,5) for n in train_target_probs.tolist()]
 
         curr_train_target_probs = np.array([round(n,5) for n in train_target_probs.tolist()])
-        with open(os.path.join(TRAIN_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy'), 'wb') as f:
+        with open(os.path.join(TARGET_PROBS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy'), 'wb') as f:
             np.save(f, curr_train_target_probs)
+
+        with open(os.path.join(MODEL_PREDS_FOLDER,'EPOCH_{0}'.format(str(epoch))+'.npy'), 'wb') as f:
+            np.save(f, train_argmax_predictions)
 
         if AUGMENT_SCHEDULE:
             # Reset the Augment 1-Hot at every epoch
