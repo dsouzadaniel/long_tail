@@ -151,6 +151,7 @@ def parse_example_proto(example_serialized):
   containing serialized Example protocol buffers. Each Example proto contains
   the following fields (values are included as examples):
 
+    image/ix: 33421
     image/height: 462
     image/width: 581
     image/colorspace: 'RGB'
