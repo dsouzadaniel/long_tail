@@ -22,7 +22,7 @@ This repository is built using PyTorch:fire:. You can install the necessary libr
 2. Unzip above files in folder "datasets" in main directory
 
 # **Usage**
-The scripts to train CIFAR-10 models on all datasets is train_c10.py.
+The scripts to train CIFAR-10/CIFAR-100 models on all datasets is train_c10.py/train_c100.py.
 
 **Training**
 
