@@ -27,10 +27,10 @@ from official.vision.image_classification.resnet import resnet_model
 class LongTail(tf.keras.metrics.Metric):
     def __init__(self, name='msp_vals', **kwargs):
         super(LongTail, self).__init__(name=name, **kwargs)
-        self.MSP_AUG_PCT = 0.2
+        self.MSP_AUG_PCT = 0.1
         self.IMAGENET_TRAINING_SIZE = 1281167
         # To Collect MSP vals over steps
-        self.msp = tf.Variable(tf.zeros([self.IMAGENET_TRAINING_SIZE]), dtype=tf.float32)
+        self.msp = tf.Variable(-1*tf.ones([self.IMAGENET_TRAINING_SIZE]), dtype=tf.float32)
         # To retain one-hot for augmentation over epochs
         self.to_aug = tf.Variable(tf.ones([self.IMAGENET_TRAINING_SIZE]), dtype=tf.float32)
 
@@ -47,7 +47,8 @@ class LongTail(tf.keras.metrics.Metric):
         return tf.math.reduce_sum(self.to_aug).numpy()
 
     def result_msp(self):
-        return tf.math.count_nonzero(self.msp, axis=-1).numpy()
+        # return tf.math.count_nonzero(self.msp, axis=-1).numpy()
+        return tf.reduce_sum(tf.cast(tf.math.greater(self.msp, tf.constant([-1], dtype=tf.float32)), tf.float32)).numpy()
 
     def result_to_aug(self):
         return tf.math.count_nonzero(self.to_aug, axis=-1).numpy()
@@ -62,7 +63,7 @@ class LongTail(tf.keras.metrics.Metric):
         self.to_aug.assign(tf.zeros([self.IMAGENET_TRAINING_SIZE]))
         self.to_aug.assign_add(step_scattered_to_aug)
 
-        self.msp.assign(tf.zeros([self.IMAGENET_TRAINING_SIZE]))
+        self.msp.assign(tf.zeros([self.IMAGENET_TRAINING_SIZE], dtype=tf.float32))
 
     def reset_states(self):
         # No reset between steps
