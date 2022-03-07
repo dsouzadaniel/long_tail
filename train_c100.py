@@ -49,21 +49,38 @@ print("DEVICE -> {0}".format(device))
 TRAIN_DATASET = 'N20_A20_TX2'
 
 MSP_AUG_PCT = 0.2
+# RELABEL_PCT = 0.01
+
+# RELABEL_PCT = [0.01] * config.EPOCHS
+# RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
+
+RELABEL_PCT = [0.0] * config.EPOCHS
+RELABEL_PCT_STR = "ALL_0.0_AFTER_4"
 #####################################################
 
 ADD_AUG_COPIES = 0
 TGT_AUG_EPOCH_AFTER = 4
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
+# assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar100' else True
 
+print("Relabel PCT : {0}".format(RELABEL_PCT_STR))
 EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
-WRITE_FOLDER = os.path.join("C100_{0}_{1}".format(seed_value, TRAIN_DATASET), EXP_NAME)
+WRITE_FOLDER = os.path.join("TEMP_C100_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
     os.makedirs(name=WRITE_FOLDER)
+
+TARGET_PROBS_FOLDER = os.path.join(WRITE_FOLDER,'target_probs_npz_files')
+if not os.path.exists(TARGET_PROBS_FOLDER):
+    os.makedirs(name=TARGET_PROBS_FOLDER)
+
+MODEL_PREDS_FOLDER = os.path.join(WRITE_FOLDER,'model_preds_npz_files')
+if not os.path.exists(MODEL_PREDS_FOLDER):
+    os.makedirs(name=MODEL_PREDS_FOLDER)
 
 if not _using_longtail_dataset:
     print("{0}_Using Original({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
@@ -74,6 +91,14 @@ else:
     orig_trainset = classes.LONGTAIL_CIFAR100(dataset_npz=_train_npz, apply_augmentation=False)
 
 print(orig_trainset)
+
+# Initialize for Relabel
+# print("Reading Default Labels")
+curr_labels = [d[1] for d in orig_trainset.dataset]
+# print("Writing Default Labels")
+with open(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+    np.save(f, np.array([c for c in curr_labels], dtype=int))
+
 
 #  Initialize to all 1s to augment the entire dataset
 to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
@@ -122,7 +147,11 @@ scheduler = optim.lr_scheduler.MultiStepLR(
 
 
 # Initialize Prediction Arrays
-train_epoch_predictions = np.zeros(shape=(len(orig_trainset)))
+train_target_probs = -1 * np.ones(shape=(len(orig_trainset)))
+train_argmax_predictions = -1 * np.ones(shape=(len(orig_trainset)))
+# print("#"*10,"Pre-Epoch {0} Predictions Written : {1}".format(loop_type, np.sum(target_pred_probs > -1)))
+print("#" * 10, "Pre-Epoch Predictions Written : {0}".format(np.sum(train_argmax_predictions > -1)))
+
 test_epoch_predictions = np.zeros(shape=(len(testset)))
 
 # Softmax for Predictions
@@ -144,6 +173,11 @@ def train(epoch):
                                                          augment_indicator=to_augment_next_epoch,
                                                          num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
 
+    if AUGMENT_SCHEDULE:
+        curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'))
+        print("Using New Labels")
+        curr_trainset.make_dataset_new_labels(new_labels=curr_labels.tolist())
+
     curr_trainloader = DataLoader(
         curr_trainset,
         batch_size=config.TRAIN_BATCH_SIZE,
@@ -153,7 +187,8 @@ def train(epoch):
     )
 
     # Zero Out Epoch Matrix at Epoch Start
-    train_epoch_predictions.fill(0)
+    train_target_probs.fill(-1)
+    train_argmax_predictions.fill(-1)
 
     for ixs, inputs, targets in curr_trainloader:
         net.train()
@@ -172,7 +207,9 @@ def train(epoch):
 
         # Write Predictions
         target_softmax_output = softmax(outputs.clone().cpu().detach())[np.arange(len(targets)), targets]
-        train_epoch_predictions[ixs[ixs < len(orig_trainset)]] = target_softmax_output[ixs < len(orig_trainset)]
+        train_target_probs[ixs[ixs < len(orig_trainset)]] = target_softmax_output[ixs < len(orig_trainset)]
+
+        train_argmax_predictions[ixs[ixs < len(orig_trainset)]] = torch.argmax(softmax(outputs.clone().cpu().detach()), dim=-1, keepdim=False)[ixs < len(orig_trainset)]
 
     scheduler.step()
     loss = train_loss / len(orig_trainloader)
@@ -222,6 +259,7 @@ def test(epoch):
 # Main Training Loop
 collect_mtrx_data = []
 collect_aupr_data = []
+collect_label_change_data = []
 
 collect_predprob_train_data = {}
 collect_predprob_test_data = {}
@@ -253,8 +291,15 @@ for epoch in tqdm(range(config.EPOCHS)):
     )
 
     # Write Predictons
-    collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = train_epoch_predictions.tolist()
+    collect_predprob_train_data['EPOCH_{0}'.format(str(epoch))] = train_target_probs.tolist()
     collect_predprob_test_data['EPOCH_{0}'.format(str(epoch))] = test_epoch_predictions.tolist()
+
+    curr_train_target_probs = np.array([round(n, 5) for n in train_target_probs.tolist()])
+    with open(os.path.join(TARGET_PROBS_FOLDER, 'EPOCH_{0}'.format(str(epoch)) + '.npy'), 'wb') as f:
+        np.save(f, curr_train_target_probs)
+
+    with open(os.path.join(MODEL_PREDS_FOLDER, 'EPOCH_{0}'.format(str(epoch)) + '.npy'), 'wb') as f:
+        np.save(f, train_argmax_predictions)
 
     if AUGMENT_SCHEDULE:
         # Reset the Augment 1-Hot at every epoch
@@ -263,7 +308,7 @@ for epoch in tqdm(range(config.EPOCHS)):
         print("Clearing the Augment 1-hot Sum: {1} ".format(epoch, np.sum(to_augment_next_epoch)))
         # ##################### Choosing using SFMX over the entire dataset #####################
 
-        curr_sfmx_scores = train_epoch_predictions
+        curr_sfmx_scores = train_target_probs
 
         _, min_sfmx_ix = torch.topk(
             torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * MSP_AUG_PCT), largest=False
@@ -273,7 +318,6 @@ for epoch in tqdm(range(config.EPOCHS)):
 
         # Additional Information Available if using LongTail Datasets
         if _using_longtail_dataset:
-
             # AUPR Calculation
             noisy_1hot, atypical_1hot = np.zeros(len(orig_trainset)), np.zeros(len(orig_trainset))
             np.put(a=noisy_1hot, ind=orig_trainset.selected_ixs_for_noisy, v=1)
@@ -289,10 +333,30 @@ for epoch in tqdm(range(config.EPOCHS)):
             atypical_aupr_random = average_precision_score(y_true=atypical_1hot,
                                                            y_score=np.random.rand(len(orig_trainset)))
 
-            noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_epoch_predictions)
-            atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_epoch_predictions)
+            noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_target_probs)
+            atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_target_probs)
 
             collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx,epoch))
+
+        ####### RELABEL #########
+        new_labels = np.array(curr_labels)
+
+        _, ix_for_relabelling = torch.topk(
+            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT[epoch]), largest=False
+        )
+        ix_for_relabelling = ix_for_relabelling.numpy()
+
+        # Relabel for next epoch
+        # print("IXS : {0}".format(ix_for_relabelling[:10]))
+        # print(new_labels[ix_for_relabelling][:10])
+        # print(train_argmax_predictions[ix_for_relabelling][:10])
+        label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling] == train_argmax_predictions[ix_for_relabelling])
+        collect_label_change_data.append((label_change, epoch))
+        print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
+        new_labels[ix_for_relabelling]  = train_argmax_predictions[ix_for_relabelling]
+
+        with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+            np.save(f, new_labels)
 
 # Write Metric Files
 mtrx_df = pd.DataFrame(
@@ -306,11 +370,22 @@ mtrx_df = pd.DataFrame(
     ],
 )
 
+relabel_df = pd.DataFrame(
+    data=collect_label_change_data,
+    columns=[
+        "labels_changed",
+        "epoch",
+    ]
+)
+
 collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
 collect_predprob_test_data_df = pd.DataFrame.from_dict(collect_predprob_test_data)
 
 # Write Files
+# Write Files
 mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
+relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
+
 collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
 collect_predprob_test_data_df.to_csv(os.path.join(WRITE_FOLDER, "test_predprob.csv"), index=False)
 
