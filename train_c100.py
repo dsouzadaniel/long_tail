@@ -51,15 +51,12 @@ TRAIN_DATASET = 'N20_A20_TX2'
 MSP_AUG_PCT = 0.2
 # RELABEL_PCT = 0.01
 
-# RELABEL_PCT = [0.01] * config.EPOCHS
-# RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
-
-RELABEL_PCT = [0.0] * config.EPOCHS
-RELABEL_PCT_STR = "ALL_0.0_AFTER_4"
+RELABEL_PCT = [0.01] * config.EPOCHS
+RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
 #####################################################
 
 ADD_AUG_COPIES = 0
-TGT_AUG_EPOCH_AFTER = 4
+TGT_AUG_EPOCH_AFTER = 10
 
 assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 # assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
@@ -67,7 +64,7 @@ assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar100' else True
 
 print("Relabel PCT : {0}".format(RELABEL_PCT_STR))
-EXP_NAME = 'aug_msp_{0}'.format(MSP_AUG_PCT)
+EXP_NAME = 'aug_msp_{0}_after_{1}'.format(MSP_AUG_PCT,TGT_AUG_EPOCH_AFTER)
 WRITE_FOLDER = os.path.join("TEMP_C100_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
