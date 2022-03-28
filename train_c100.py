@@ -44,28 +44,43 @@ print("DEVICE -> {0}".format(device))
 
 #####################################################
 # Settings
-# TRAIN_DATASET = 'cifar100'
+# TRAIN_DATASET = 'cifar10'
 # TRAIN_DATASET = 'N20_A20_T60'
 TRAIN_DATASET = 'N20_A20_TX2'
 
 MSP_AUG_PCT = 0.2
 # RELABEL_PCT = 0.01
 
-RELABEL_PCT = [0.01] * config.EPOCHS
-RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
+# RELABEL_PCT = [0.01] * config.EPOCHS
+# RELABEL_PCT_STR = "ALL_0.01_AFTER_4"
+
+# At which epoch Relabelled Data will be recorded
+RELABEL_EPOCH = 3
+RELABEL_PCT = 0.2
+
+# From which epoch will be begin using the Relabelled Data ( Default is : RELABEL_EPOCH + 1 )
+SWITCHLABEL_EPOCH = RELABEL_EPOCH + 1
+
+RELABEL_PCT_STR = f"{RELABEL_PCT}_AT_{RELABEL_EPOCH}_EFFECTIVE_FROM_{SWITCHLABEL_EPOCH}"
+
 #####################################################
 
 ADD_AUG_COPIES = 0
-TGT_AUG_EPOCH_AFTER = 10
+# At which epochs Targeted Augmentation will be applied
+TGT_AUG_EPOCH_START = 1
+TGT_AUG_EPOCH_STOP = 3
 
-assert  0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
-# assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
+assert TGT_AUG_EPOCH_STOP>=TGT_AUG_EPOCH_START, "The Target Stop Epoch is smaller than the Start Epoch!"
+assert RELABEL_EPOCH>=TGT_AUG_EPOCH_STOP, "The Relabel Epoch is smaller than the Stop Epoch!"
+
+assert 0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
+assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar100' else True
 
 print("Relabel PCT : {0}".format(RELABEL_PCT_STR))
-EXP_NAME = 'aug_msp_{0}_after_{1}'.format(MSP_AUG_PCT,TGT_AUG_EPOCH_AFTER)
-WRITE_FOLDER = os.path.join("TEMP_C100_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT_STR, TRAIN_DATASET), EXP_NAME)
+EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
+WRITE_FOLDER = os.path.join("C100_{0}_RELABEL_{1}_{2}".format(seed_value, RELABEL_PCT_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
@@ -93,8 +108,8 @@ print(orig_trainset)
 # print("Reading Default Labels")
 curr_labels = [d[1] for d in orig_trainset.dataset]
 # print("Writing Default Labels")
-with open(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
-    np.save(f, np.array([c for c in curr_labels], dtype=int))
+# with open(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+#     np.save(f, np.array([c for c in curr_labels], dtype=int))
 
 
 #  Initialize to all 1s to augment the entire dataset
@@ -105,7 +120,7 @@ if MSP_AUG_PCT==0:
     to_augment_next_epoch = np.zeros(shape=(len(orig_trainset)))
 
 print("\n","*"*100)
-print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting after Epoch {2}".format(int(MSP_AUG_PCT*100), ADD_AUG_COPIES, TGT_AUG_EPOCH_AFTER))
+print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting from Epoch {2} to Epoch {3}".format(int(MSP_AUG_PCT*100), ADD_AUG_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
 
 print("*"*100,"\n")
 
@@ -164,16 +179,19 @@ def train(epoch):
 
     if not _using_longtail_dataset:
         curr_trainset = classes.CIFAR100_DYNAMIC(augment_indicator=to_augment_next_epoch,
-                                                num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+                                                num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
     else:
         curr_trainset = classes.LONGTAIL_CIFAR100_DYNAMIC(dataset_npz=_train_npz,
                                                          augment_indicator=to_augment_next_epoch,
-                                                         num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_AFTER else ADD_AUG_COPIES)
+                                                         num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
 
-    if AUGMENT_SCHEDULE:
+    # if TGT_AUGMENT_SCHEDULE:
+    if (epoch == SWITCHLABEL_EPOCH):
+        # If Previous Epoch involved Relabelling, then load new labels!
         curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'))
         print("Using New Labels")
         curr_trainset.make_dataset_new_labels(new_labels=curr_labels.tolist())
+
 
     curr_trainloader = DataLoader(
         curr_trainset,
@@ -266,7 +284,7 @@ _track_lr = optimizer.param_groups[0]["lr"]
 print("Learning Rate --> {1}".format(_track_lr, optimizer.param_groups[0]["lr"]))
 for epoch in tqdm(range(config.EPOCHS)):
 
-    AUGMENT_SCHEDULE = (epoch >= TGT_AUG_EPOCH_AFTER)
+    # TGT_AUGMENT_SCHEDULE = (epoch >= TGT_AUG_EPOCH_START)
 
     # Check for LR Changes
     if _track_lr != optimizer.param_groups[0]["lr"]:
@@ -298,7 +316,13 @@ for epoch in tqdm(range(config.EPOCHS)):
     with open(os.path.join(MODEL_PREDS_FOLDER, 'EPOCH_{0}'.format(str(epoch)) + '.npy'), 'wb') as f:
         np.save(f, train_argmax_predictions)
 
-    if AUGMENT_SCHEDULE:
+
+
+    to_augment_next_epoch.fill(1)
+
+    TGT_AUGMENT_SCHEDULE = (TGT_AUG_EPOCH_START-1 <= epoch <= TGT_AUG_EPOCH_STOP-1)
+
+    if TGT_AUGMENT_SCHEDULE:
         # Reset the Augment 1-Hot at every epoch
         to_augment_next_epoch.fill(0)
 
@@ -313,33 +337,35 @@ for epoch in tqdm(range(config.EPOCHS)):
         # Prep for AUGMENT in the next epoch
         to_augment_next_epoch[min_sfmx_ix] = 1
 
-        # Additional Information Available if using LongTail Datasets
-        if _using_longtail_dataset:
-            # AUPR Calculation
-            noisy_1hot, atypical_1hot = np.zeros(len(orig_trainset)), np.zeros(len(orig_trainset))
-            np.put(a=noisy_1hot, ind=orig_trainset.selected_ixs_for_noisy, v=1)
-            np.put(a=atypical_1hot, ind=orig_trainset.selected_ixs_for_atypical, v=1)
+    # Additional Information Available if using LongTail Datasets
+    if _using_longtail_dataset:
+        # AUPR Calculation
+        noisy_1hot, atypical_1hot = np.zeros(len(orig_trainset)), np.zeros(len(orig_trainset))
+        np.put(a=noisy_1hot, ind=orig_trainset.selected_ixs_for_noisy, v=1)
+        np.put(a=atypical_1hot, ind=orig_trainset.selected_ixs_for_atypical, v=1)
 
-            assert len(orig_trainset.selected_ixs_for_noisy) == sum(
-                noisy_1hot), "Noisy 1 Hot is not equal to num of noisy"
-            assert len(orig_trainset.selected_ixs_for_atypical) == sum(
-                atypical_1hot), "Atypical 1 Hot is not equal to num of atypical"
+        assert len(orig_trainset.selected_ixs_for_noisy) == sum(
+            noisy_1hot), "Noisy 1 Hot is not equal to num of noisy"
+        assert len(orig_trainset.selected_ixs_for_atypical) == sum(
+            atypical_1hot), "Atypical 1 Hot is not equal to num of atypical"
 
-            # AUPR Data
-            noisy_aupr_random = average_precision_score(y_true=noisy_1hot, y_score=np.random.rand(len(orig_trainset)))
-            atypical_aupr_random = average_precision_score(y_true=atypical_1hot,
-                                                           y_score=np.random.rand(len(orig_trainset)))
+        # AUPR Data
+        noisy_aupr_random = average_precision_score(y_true=noisy_1hot, y_score=np.random.rand(len(orig_trainset)))
+        atypical_aupr_random = average_precision_score(y_true=atypical_1hot,
+                                                       y_score=np.random.rand(len(orig_trainset)))
 
-            noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_target_probs)
-            atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_target_probs)
+        noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_target_probs)
+        atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_target_probs)
 
-            collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx,epoch))
+        collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx,epoch))
 
+
+    if (epoch == RELABEL_EPOCH):
         ####### RELABEL #########
         new_labels = np.array(curr_labels)
 
         _, ix_for_relabelling = torch.topk(
-            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT[epoch]), largest=False
+            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
         )
         ix_for_relabelling = ix_for_relabelling.numpy()
 
@@ -378,7 +404,6 @@ relabel_df = pd.DataFrame(
 collect_predprob_train_data_df = pd.DataFrame.from_dict(collect_predprob_train_data)
 collect_predprob_test_data_df = pd.DataFrame.from_dict(collect_predprob_test_data)
 
-# Write Files
 # Write Files
 mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
 relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
