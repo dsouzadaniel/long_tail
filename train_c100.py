@@ -31,6 +31,7 @@ else:
 #####################################################
 # Libraries
 import torch
+import argparse
 import pandas as pd
 from tqdm import tqdm
 import torch.nn as nn
@@ -41,6 +42,34 @@ from sklearn.metrics import average_precision_score
 from models import wide_resnet
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("DEVICE -> {0}".format(device))
+
+parser = argparse.ArgumentParser(description='LongTail Training Recipes')
+parser.add_argument('--MSP_AUG_PCT',
+                    type=float,
+                    required=False,
+                    default=1.0,
+                    help='How much of the bottom MSP % to Augment [Default: 1.0]')
+parser.add_argument('--DOWNWEIGHT_TO',
+                    type=float,
+                    required=False,
+                    default=1.0,
+                    help='Downweight the Bottom MSP% to this value [Default: 1.0]')
+parser.add_argument('--RELABEL_PCT',
+                    type=float,
+                    required=False,
+                    default=0.0,
+                    help='How much of the bottom MSP % to Relabel [Default: 0.0]')
+parser.add_argument('--EPOCHS',
+                    type=int,
+                    required=False,
+                    default=60,
+                    help='How many epochs to run for [Default: 60]')
+
+args = parser.parse_args()
+print(f"MSP Augment Pct :{args.MSP_AUG_PCT}")
+print(f"Downweight MSP Augment Pct To :{args.DOWNWEIGHT_TO}")
+print(f"Relabel Pct :{args.RELABEL_PCT}")
+print(f"Epochs :{args.EPOCHS}")
 
 #####################################################
 # Settings
@@ -55,7 +84,7 @@ TRAIN_DATASET = 'N20_A20_TX2'
 TGT_AUG_EPOCH_START = 1
 TGT_AUG_EPOCH_STOP = 3
 # Targeted Augmentation
-MSP_AUG_PCT = 0.2
+MSP_AUG_PCT = args.MSP_AUG_PCT
 ADD_AUG_COPIES = 0
 
 
@@ -66,17 +95,17 @@ ADD_AUG_COPIES = 0
 INTERVENTION_RECORD_EPOCH = TGT_AUG_EPOCH_STOP
 INTERVENTION_ACT_EPOCH = INTERVENTION_RECORD_EPOCH + 1 # ( i.e acting on the very next epoch)
 # Specific Interventions
-RELABEL_PCT = 0  # Default : 0
-DOWNWEIGHT_MSP_AUG_PCT_TO = 1.0  # Default : 1.0
+RELABEL_PCT = args.RELABEL_PCT  # Default : 0
+DOWNWEIGHT_MSP_AUG_PCT_TO = args.DOWNWEIGHT_TO  # Default : 1.0
 
-if int(DOWNWEIGHT_MSP_AUG_PCT_TO)==1 and RELABEL_PCT==0:
+if DOWNWEIGHT_MSP_AUG_PCT_TO==1.0 and RELABEL_PCT==0.0:
     INTERVENTION_STR = f"STANDARD"
-elif int(DOWNWEIGHT_MSP_AUG_PCT_TO)==1:
+elif DOWNWEIGHT_MSP_AUG_PCT_TO==1.0:
     INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
-elif int(RELABEL_PCT)==0:
-    INTERVENTION_STR = f"DOWNWEIGHT_{MSP_AUG_PCT}_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
+elif RELABEL_PCT==0.0:
+    INTERVENTION_STR = f"DOWNWEIGHT_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
 else:
-    INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_DOWNWEIGHT_{MSP_AUG_PCT}_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
+    INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_DOWNWEIGHT_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
 #####################################################
 
 assert TGT_AUG_EPOCH_STOP>=TGT_AUG_EPOCH_START, "The Target Stop Epoch is smaller than the Start Epoch!"
@@ -297,7 +326,7 @@ collect_predprob_test_data = {}
 
 _track_lr = optimizer.param_groups[0]["lr"]
 print("Learning Rate --> {1}".format(_track_lr, optimizer.param_groups[0]["lr"]))
-for epoch in tqdm(range(config.EPOCHS)):
+for epoch in tqdm(range(args.EPOCHS)):
 
 
     if (epoch == INTERVENTION_ACT_EPOCH):
