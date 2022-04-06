@@ -74,8 +74,8 @@ print(f"Epochs :{args.EPOCHS}")
 #####################################################
 # Settings
 # TRAIN_DATASET = 'cifar100'
-# TRAIN_DATASET = 'N20_A20_T60'
-TRAIN_DATASET = 'N20_A20_TX2'
+TRAIN_DATASET = 'N20_A20_T60'
+# TRAIN_DATASET = 'N20_A20_TX2'
 
 #####################################################
 # Targeted Augmentation
