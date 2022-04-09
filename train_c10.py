@@ -58,7 +58,7 @@ parser.add_argument('--MSP_AUG_PCT',
 parser.add_argument('--DOWNWEIGHT_PCT',
                     type=float,
                     required=False,
-                    default=1.0,
+                    default=0.0,
                     help='How much of the bottom MSP % to Downweight')
 parser.add_argument('--DOWNWEIGHT_TO',
                     type=float,
