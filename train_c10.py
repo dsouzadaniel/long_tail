@@ -4,18 +4,23 @@
 seed_value = 789
 # 1. Set `PYTHONHASHSEED` environment variable at a fixed value
 import os
+
 os.environ["PYTHONHASHSEED"] = str(seed_value)
 # 2. Set `python` built-in pseudo-random generator at a fixed value
 import random
+
 random.seed(seed_value)
 # 3. Set `numpy` pseudo-random generator at a fixed value
 import numpy as np
+
 np.random.seed(seed_value)
 # 4. Set Torch seed at a fixed value
 import torch
+
 torch.manual_seed(seed_value)
 # 5. Set TF seed at a fixed value
 import tensorflow as tf
+
 tf.random.set_seed(seed_value)
 # 6. CuDNN settings
 # import config, loaders, classes
@@ -40,6 +45,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import average_precision_score
 
 from models import wide_resnet
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("DEVICE -> {0}".format(device))
 
@@ -49,11 +55,16 @@ parser.add_argument('--MSP_AUG_PCT',
                     required=False,
                     default=1.0,
                     help='How much of the bottom MSP % to Augment [Default: 1.0]')
+parser.add_argument('--DOWNWEIGHT_PCT',
+                    type=float,
+                    required=False,
+                    default=1.0,
+                    help='How much of the bottom MSP % to Downweight')
 parser.add_argument('--DOWNWEIGHT_TO',
                     type=float,
                     required=False,
                     default=1.0,
-                    help='Downweight the Bottom MSP% to this value [Default: 1.0]')
+                    help='Downweight the selected data to this value [Default: 1.0]')
 parser.add_argument('--RELABEL_PCT',
                     type=float,
                     required=False,
@@ -67,15 +78,15 @@ parser.add_argument('--EPOCHS',
 
 args = parser.parse_args()
 print(f"MSP Augment Pct :{args.MSP_AUG_PCT}")
-print(f"Downweight MSP Augment Pct To :{args.DOWNWEIGHT_TO}")
+print(f"Downweight {args.DOWNWEIGHT_PCT} To :{args.DOWNWEIGHT_TO}")
 print(f"Relabel Pct :{args.RELABEL_PCT}")
 print(f"Epochs :{args.EPOCHS}")
 
 #####################################################
 # Settings
 # TRAIN_DATASET = 'cifar10'
-TRAIN_DATASET = 'N20_A20_T60'
-# TRAIN_DATASET = 'N20_A20_TX2'
+# TRAIN_DATASET = 'N20_A20_T60'
+TRAIN_DATASET = 'N20_A20_TX2'
 
 #####################################################
 # Targeted Augmentation
@@ -87,32 +98,33 @@ TGT_AUG_EPOCH_STOP = 3
 MSP_AUG_PCT = args.MSP_AUG_PCT
 ADD_AUG_COPIES = 0
 
-
 #####################################################
 # Targeted Intervention Settings
 
 # At which epoch Intervention Data will be Recorded & when will it be enacted
 INTERVENTION_RECORD_EPOCH = TGT_AUG_EPOCH_STOP
-INTERVENTION_ACT_EPOCH = INTERVENTION_RECORD_EPOCH + 1 # ( i.e acting on the very next epoch)
+INTERVENTION_ACT_EPOCH = INTERVENTION_RECORD_EPOCH + 1  # ( i.e acting on the very next epoch)
 # Specific Interventions
 RELABEL_PCT = args.RELABEL_PCT  # Default : 0
-DOWNWEIGHT_MSP_AUG_PCT_TO = args.DOWNWEIGHT_TO  # Default : 1.0
 
-if DOWNWEIGHT_MSP_AUG_PCT_TO==1.0 and RELABEL_PCT==0.0:
+DOWNWEIGHT_PCT = args.DOWNWEIGHT_PCT  # Default is amount of Noisy
+DOWNWEIGHT_TO = args.DOWNWEIGHT_TO  # Default : 1.0
+
+if DOWNWEIGHT_TO == 1.0 and RELABEL_PCT == 0.0:
     INTERVENTION_STR = f"STANDARD"
-elif DOWNWEIGHT_MSP_AUG_PCT_TO==1.0:
+elif DOWNWEIGHT_TO == 1.0:
     INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
-elif RELABEL_PCT==0.0:
-    INTERVENTION_STR = f"DOWNWEIGHT_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
+elif RELABEL_PCT == 0.0:
+    INTERVENTION_STR = f"DOWNWEIGHT_{DOWNWEIGHT_PCT}_TO_{DOWNWEIGHT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
 else:
-    INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_DOWNWEIGHT_TO_{DOWNWEIGHT_MSP_AUG_PCT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
+    INTERVENTION_STR = f"RELABEL_{RELABEL_PCT}_AT_{INTERVENTION_RECORD_EPOCH}_DOWNWEIGHT_{DOWNWEIGHT_PCT}_TO_{DOWNWEIGHT_TO}_EFFECTIVE_FROM_{INTERVENTION_ACT_EPOCH}"
 #####################################################
 
-assert TGT_AUG_EPOCH_STOP>=TGT_AUG_EPOCH_START, "The Target Stop Epoch is smaller than the Start Epoch!"
+assert TGT_AUG_EPOCH_STOP >= TGT_AUG_EPOCH_START, "The Target Stop Epoch is smaller than the Start Epoch!"
 assert INTERVENTION_RECORD_EPOCH >= TGT_AUG_EPOCH_STOP, "The Intervention Epoch is smaller than the Stop Epoch!"
 
-assert 0<=MSP_AUG_PCT<=1, "MSP_AUG_PCT must be between 0 and 1"
-assert 0<=RELABEL_PCT<=1, "RELABEL_PCT must be between 0 and 1"
+assert 0 <= MSP_AUG_PCT <= 1, "MSP_AUG_PCT must be between 0 and 1"
+assert 0 <= RELABEL_PCT <= 1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
@@ -124,11 +136,11 @@ WRITE_FOLDER = os.path.join("C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_ST
 if not os.path.exists(WRITE_FOLDER):
     os.makedirs(name=WRITE_FOLDER)
 
-TARGET_PROBS_FOLDER = os.path.join(WRITE_FOLDER,'target_probs_npz_files')
+TARGET_PROBS_FOLDER = os.path.join(WRITE_FOLDER, 'target_probs_npz_files')
 if not os.path.exists(TARGET_PROBS_FOLDER):
     os.makedirs(name=TARGET_PROBS_FOLDER)
 
-MODEL_PREDS_FOLDER = os.path.join(WRITE_FOLDER,'model_preds_npz_files')
+MODEL_PREDS_FOLDER = os.path.join(WRITE_FOLDER, 'model_preds_npz_files')
 if not os.path.exists(MODEL_PREDS_FOLDER):
     os.makedirs(name=MODEL_PREDS_FOLDER)
 
@@ -154,15 +166,15 @@ curr_labels = [d[1] for d in orig_trainset.dataset]
 to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
 curr_epoch_image_weight = np.ones(shape=(len(orig_trainset)))
 
-
 # For No Augmentation, set below variables accordingly
-if MSP_AUG_PCT==0:
+if MSP_AUG_PCT == 0:
     to_augment_next_epoch = np.zeros(shape=(len(orig_trainset)))
 
-print("\n","*"*100)
-print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting from Epoch {2} to Epoch {3}".format(int(MSP_AUG_PCT*100), ADD_AUG_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
+print("\n", "*" * 100)
+print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting from Epoch {2} to Epoch {3}".format(
+    int(MSP_AUG_PCT * 100), ADD_AUG_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
 
-print("*"*100,"\n")
+print("*" * 100, "\n")
 
 orig_trainloader = DataLoader(
     orig_trainset,
@@ -199,7 +211,6 @@ scheduler = optim.lr_scheduler.MultiStepLR(
     optimizer, milestones=[10, 20, 30], gamma=0.2
 )
 
-
 # Initialize Prediction Arrays
 train_target_probs = -1 * np.ones(shape=(len(orig_trainset)))
 train_argmax_predictions = -1 * np.ones(shape=(len(orig_trainset)))
@@ -228,13 +239,11 @@ def train(epoch):
                                                          num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
 
     # if TGT_AUGMENT_SCHEDULE:
-    if (epoch >= INTERVENTION_ACT_EPOCH):
+    if (RELABEL_PCT != 0.0) and (epoch >= INTERVENTION_ACT_EPOCH):
         # If Previous Epoch involved Relabelling, then load new labels!
-        curr_labels = np.load(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'))
+        curr_labels = np.load(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'))
         print("Using New Labels")
         curr_trainset.make_dataset_new_labels(new_labels=curr_labels.tolist())
-
-
 
     curr_trainloader = DataLoader(
         curr_trainset,
@@ -257,7 +266,7 @@ def train(epoch):
         loss = unpacked_criterion(outputs, train_targets)
         curr_batch_weight = torch.as_tensor(curr_epoch_image_weight[ixs])
         curr_batch_weight = curr_batch_weight.to(device)
-        loss = torch.mean(curr_batch_weight*loss)
+        loss = torch.mean(curr_batch_weight * loss)
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
@@ -269,7 +278,8 @@ def train(epoch):
         target_softmax_output = softmax(outputs.clone().cpu().detach())[np.arange(len(targets)), targets]
         train_target_probs[ixs[ixs < len(orig_trainset)]] = target_softmax_output[ixs < len(orig_trainset)]
 
-        train_argmax_predictions[ixs[ixs < len(orig_trainset)]] = torch.argmax(softmax(outputs.clone().cpu().detach()), dim=-1, keepdim=False)[ixs < len(orig_trainset)]
+        train_argmax_predictions[ixs[ixs < len(orig_trainset)]] = \
+        torch.argmax(softmax(outputs.clone().cpu().detach()), dim=-1, keepdim=False)[ixs < len(orig_trainset)]
 
     scheduler.step()
     loss = train_loss / len(orig_trainloader)
@@ -291,7 +301,6 @@ def test(epoch):
         net.eval()
         test_inputs, test_targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
-
 
         outputs = net(test_inputs)
         loss = criterion(outputs, test_targets)
@@ -323,15 +332,13 @@ collect_label_change_data = []
 collect_predprob_train_data = {}
 collect_predprob_test_data = {}
 
-
 _track_lr = optimizer.param_groups[0]["lr"]
 print("Learning Rate --> {1}".format(_track_lr, optimizer.param_groups[0]["lr"]))
 for epoch in tqdm(range(args.EPOCHS)):
 
-
     if (epoch == INTERVENTION_ACT_EPOCH):
         print(f"Curr Epoch Image Weight! : Pre-Sum {np.sum(curr_epoch_image_weight)}")
-        curr_epoch_image_weight[min_sfmx_ix] = DOWNWEIGHT_MSP_AUG_PCT_TO
+        curr_epoch_image_weight[ix_for_downweighting] = DOWNWEIGHT_TO
         print(f"Curr Epoch Image Weight! : Post-Sum {np.sum(curr_epoch_image_weight)}")
 
     # Check for LR Changes
@@ -364,11 +371,9 @@ for epoch in tqdm(range(args.EPOCHS)):
     with open(os.path.join(MODEL_PREDS_FOLDER, 'EPOCH_{0}'.format(str(epoch)) + '.npy'), 'wb') as f:
         np.save(f, train_argmax_predictions)
 
-
-
     to_augment_next_epoch.fill(1)
 
-    TGT_AUGMENT_SCHEDULE = (TGT_AUG_EPOCH_START-1 <= epoch <= TGT_AUG_EPOCH_STOP-1)
+    TGT_AUGMENT_SCHEDULE = (TGT_AUG_EPOCH_START - 1 <= epoch <= TGT_AUG_EPOCH_STOP - 1)
 
     if TGT_AUGMENT_SCHEDULE:
         # Reset the Augment 1-Hot at every epoch
@@ -405,36 +410,35 @@ for epoch in tqdm(range(args.EPOCHS)):
         noisy_aupr_sfmx = average_precision_score(y_true=noisy_1hot, y_score=-train_target_probs)
         atypical_aupr_sfmx = average_precision_score(y_true=atypical_1hot, y_score=-train_target_probs)
 
-        collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx,epoch))
-
+        collect_aupr_data.append((noisy_aupr_random, atypical_aupr_random, noisy_aupr_sfmx, atypical_aupr_sfmx, epoch))
 
     if (epoch == INTERVENTION_RECORD_EPOCH):
         ####### RELABEL #########
 
         curr_sfmx_scores = train_target_probs
 
-        _, min_sfmx_ix = torch.topk(
-            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * MSP_AUG_PCT), largest=False
+        _, ix_for_downweighting = torch.topk(
+            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * DOWNWEIGHT_PCT), largest=False
         )
 
-        _, ix_for_relabelling = torch.topk(
-            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
-        )
+        if (RELABEL_PCT != 0.0):
+            _, ix_for_relabelling = torch.topk(
+                torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * RELABEL_PCT), largest=False
+            )
 
-        ix_for_relabelling = ix_for_relabelling.numpy()
+            ix_for_relabelling = ix_for_relabelling.numpy()
 
-        # Relabel for next epoch
-        new_labels = np.array(curr_labels)
-        label_change = len(ix_for_relabelling) - sum(new_labels[ix_for_relabelling] == train_argmax_predictions[ix_for_relabelling])
-        collect_label_change_data.append((label_change, epoch))
-        print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),label_change))
-        new_labels[ix_for_relabelling]  = train_argmax_predictions[ix_for_relabelling]
+            # Relabel for next epoch
+            new_labels = np.array(curr_labels)
+            label_change = len(ix_for_relabelling) - sum(
+                new_labels[ix_for_relabelling] == train_argmax_predictions[ix_for_relabelling])
+            collect_label_change_data.append((label_change, epoch))
+            print("Relabelling {0} Images : {1}/{0} Labels Changed In This Epoch".format(len(ix_for_relabelling),
+                                                                                         label_change))
+            new_labels[ix_for_relabelling] = train_argmax_predictions[ix_for_relabelling]
 
-        with open(os.path.join(WRITE_FOLDER,'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
-            np.save(f, new_labels)
-
-
-
+            with open(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'), 'wb') as f:
+                np.save(f, new_labels)
 
 # Write Metric Files
 mtrx_df = pd.DataFrame(
@@ -466,10 +470,8 @@ relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
 collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
 collect_predprob_test_data_df.to_csv(os.path.join(WRITE_FOLDER, "test_predprob.csv"), index=False)
 
-
 # Write Additional Files( if using LongTail dataset)
 if _using_longtail_dataset:
-
     aupr_df = pd.DataFrame(
         data=collect_aupr_data,
         columns=[
