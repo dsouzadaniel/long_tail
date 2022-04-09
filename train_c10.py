@@ -82,8 +82,8 @@ print(f"Downweight {args.DOWNWEIGHT_PCT} To :{args.DOWNWEIGHT_TO}")
 print(f"Relabel Pct :{args.RELABEL_PCT}")
 print(f"Epochs :{args.EPOCHS}")
 
-# Clever XOR to check downweighting settings
-assert ((args.DOWNWEIGHT_PCT==0.0)!=(args.DOWNWEIGHT_TO==1.0)), "Your Downweighting Settings don't make sense. Check settings"
+# Clever XNOR to check downweighting settings
+assert not ((args.DOWNWEIGHT_PCT==0.0)!=(args.DOWNWEIGHT_TO==1.0)), "Your Downweighting Settings don't make sense. Check settings"
 
 #####################################################
 # Settings
