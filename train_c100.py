@@ -467,7 +467,9 @@ collect_predprob_test_data_df = pd.DataFrame.from_dict(collect_predprob_test_dat
 
 # Write Files
 mtrx_df.to_csv(os.path.join(WRITE_FOLDER, "metrics.csv"), index=False)
-relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
+
+if (RELABEL_PCT != 0.0):
+    relabel_df.to_csv(os.path.join(WRITE_FOLDER, "relabel.csv"), index=False)
 
 collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob.csv"), index=False)
 collect_predprob_test_data_df.to_csv(os.path.join(WRITE_FOLDER, "test_predprob.csv"), index=False)
