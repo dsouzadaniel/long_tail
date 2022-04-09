@@ -130,7 +130,7 @@ _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
 print("Relabel PCT : {0}".format(INTERVENTION_STR))
 EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
-WRITE_FOLDER = os.path.join("C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
+WRITE_FOLDER = os.path.join("YY_C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
