@@ -241,8 +241,7 @@ def train(epoch):
                                                          augment_indicator=to_augment_next_epoch,
                                                          num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
 
-    # if TGT_AUGMENT_SCHEDULE:
-    if (RELABEL_PCT != 0.0) and (epoch >= INTERVENTION_ACT_EPOCH):
+    if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
         # If Previous Epoch involved Relabelling, then load new labels!
         curr_labels = np.load(os.path.join(WRITE_FOLDER, 'LATEST_RELABELS_FOR_DATASET.npy'))
         print("Using New Labels")
@@ -339,7 +338,7 @@ _track_lr = optimizer.param_groups[0]["lr"]
 print("Learning Rate --> {1}".format(_track_lr, optimizer.param_groups[0]["lr"]))
 for epoch in tqdm(range(args.EPOCHS)):
 
-    if (epoch == INTERVENTION_ACT_EPOCH):
+    if (epoch == INTERVENTION_ACT_EPOCH) and (DOWNWEIGHT_PCT != 0.0):
         print(f"Curr Epoch Image Weight! : Pre-Sum {np.sum(curr_epoch_image_weight)}")
         curr_epoch_image_weight[ix_for_downweighting] = DOWNWEIGHT_TO
         print(f"Curr Epoch Image Weight! : Post-Sum {np.sum(curr_epoch_image_weight)}")
