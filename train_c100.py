@@ -88,8 +88,8 @@ assert not ((args.DOWNWEIGHT_PCT==0.0)!=(args.DOWNWEIGHT_TO==1.0)), "Your Downwe
 #####################################################
 # Settings
 # TRAIN_DATASET = 'cifar100'
-# TRAIN_DATASET = 'N20_A20_T60'
-TRAIN_DATASET = 'N20_A20_TX2'
+TRAIN_DATASET = 'N20_A20_T60'
+# TRAIN_DATASET = 'N20_A20_TX2'
 
 #####################################################
 # Targeted Augmentation
