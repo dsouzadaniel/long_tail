@@ -294,6 +294,7 @@ def train(epoch):
 
         outputs = net(train_inputs)
         loss = unpacked_criterion(outputs, train_targets)
+        print(f"IXS --> {ixs}")
         curr_batch_weight = torch.as_tensor(curr_epoch_image_weight[ixs])
         curr_batch_weight = curr_batch_weight.to(device)
         loss = torch.mean(curr_batch_weight * loss)
