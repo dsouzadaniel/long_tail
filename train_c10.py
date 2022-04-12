@@ -294,7 +294,7 @@ def train(epoch):
 
         outputs = net(train_inputs)
         loss = unpacked_criterion(outputs, train_targets)
-        curr_batch_weight = torch.as_tensor(curr_epoch_image_weight[curr_trainset.map_to_orig_ix[ixs]]).to(device)
+        curr_batch_weight = torch.as_tensor(curr_epoch_image_weight[torch.tensor(curr_trainset.map_to_orig_ix[ixs], dtype=int)]).to(device)
         loss = torch.mean(curr_batch_weight * loss)
         loss.backward()
         optimizer.step()
