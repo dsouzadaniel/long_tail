@@ -76,9 +76,9 @@ parser.add_argument('--COPY_PCT',
                     default=0.0,
                     help='How much of the bottom MSP % to use for copies [Default: 0.0]')
 parser.add_argument('--NUM_COPIES',
-                    type=float,
+                    type=int,
                     required=False,
-                    default=0.0,
+                    default=0,
                     help='How many copies to create of the COPY_PCT %  [Default: 0.0]')
 parser.add_argument('--EPOCHS',
                     type=int,
@@ -90,7 +90,7 @@ args = parser.parse_args()
 print(f"MSP Augment Pct :{args.MSP_AUG_PCT}")
 print(f"Downweight {args.DOWNWEIGHT_PCT} To :{args.DOWNWEIGHT_TO}")
 print(f"Relabel Pct :{args.RELABEL_PCT}")
-print(f"Adding {args.NUM_COPIES} of the Copy Pct :{args.COPY_PCT}")
+print(f"Adding {args.NUM_COPIES} copies of the Bottom Pct :{args.COPY_PCT}")
 print(f"Epochs :{args.EPOCHS}")
 
 # Clever XNOR to check critical settings
@@ -191,8 +191,7 @@ if MSP_AUG_PCT == 0:
     to_augment_next_epoch = np.zeros(shape=(len(orig_trainset)))
 
 print("\n", "*" * 100)
-print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting from Epoch {2} to Epoch {3}".format(
-    int(MSP_AUG_PCT * 100), NUM_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
+print(f"Augmenting the Bottom {int(MSP_AUG_PCT * 100)}% MSP [Copying the Bottom {COPY_PCT}% MSP with {NUM_COPIES} Additional Copies] starting from Epoch {TGT_AUG_EPOCH_START} to Epoch {TGT_AUG_EPOCH_STOP}")
 
 print("*" * 100, "\n")
 
