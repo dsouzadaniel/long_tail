@@ -368,7 +368,7 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
             expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
             expanded_ix_to_orig_ix+=[ix]*self.num_additional_copies
 
-        self.copy_ix_to_orig_ix = torch.cat(self.copy_ix_to_orig_ix, torch.as_tensor(expanded_ix_to_orig_ix))
+        self.copy_ix_to_orig_ix = torch.cat([self.copy_ix_to_orig_ix, torch.as_tensor(expanded_ix_to_orig_ix)])
         print(f"YOLO B : {len(self.copy_ix_to_orig_ix)}")
 
         assert len(expanded_dataset) == np.sum(self.copy_indicator) * self.num_additional_copies, len(expanded_dataset)
