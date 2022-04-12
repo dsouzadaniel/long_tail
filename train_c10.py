@@ -70,6 +70,16 @@ parser.add_argument('--RELABEL_PCT',
                     required=False,
                     default=0.0,
                     help='How much of the bottom MSP % to Relabel [Default: 0.0]')
+parser.add_argument('--COPY_PCT',
+                    type=float,
+                    required=False,
+                    default=0.0,
+                    help='How much of the bottom MSP % to use for copies [Default: 0.0]')
+parser.add_argument('--NUM_COPIES',
+                    type=float,
+                    required=False,
+                    default=0.0,
+                    help='How many copies to create of the COPY_PCT %  [Default: 0.0]')
 parser.add_argument('--EPOCHS',
                     type=int,
                     required=False,
@@ -80,10 +90,12 @@ args = parser.parse_args()
 print(f"MSP Augment Pct :{args.MSP_AUG_PCT}")
 print(f"Downweight {args.DOWNWEIGHT_PCT} To :{args.DOWNWEIGHT_TO}")
 print(f"Relabel Pct :{args.RELABEL_PCT}")
+print(f"Adding {args.NUM_COPIES} of the Copy Pct :{args.COPY_PCT}")
 print(f"Epochs :{args.EPOCHS}")
 
-# Clever XNOR to check downweighting settings
+# Clever XNOR to check critical settings
 assert not ((args.DOWNWEIGHT_PCT==0.0)!=(args.DOWNWEIGHT_TO==1.0)), "Your Downweighting Settings don't make sense. Check settings"
+assert not ((args.NUM_COPIES==0.0)!=(args.COPY_PCT==0.0)), "Your Copy Settings don't make sense. Check settings"
 
 #####################################################
 # Settings
@@ -99,7 +111,8 @@ TGT_AUG_EPOCH_START = 1
 TGT_AUG_EPOCH_STOP = 3
 # Targeted Augmentation
 MSP_AUG_PCT = args.MSP_AUG_PCT
-ADD_AUG_COPIES = 0
+COPY_PCT = args.COPY_PCT
+NUM_COPIES = args.NUM_COPIES
 
 #####################################################
 # Targeted Intervention Settings
@@ -133,7 +146,9 @@ _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
 print("Relabel PCT : {0}".format(INTERVENTION_STR))
 EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
-WRITE_FOLDER = os.path.join("C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
+if COPY_PCT!=0.0 or NUM_COPIES!=0.0:
+    EXP_NAME = EXP_NAME + f"_with_{NUM_COPIES}_copies_of_{COPY_PCT}"
+WRITE_FOLDER = os.path.join("YYY_C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
@@ -167,6 +182,7 @@ curr_labels = [d[1] for d in orig_trainset.dataset]
 
 #  Initialize to all 1s to augment the entire dataset
 to_augment_next_epoch = np.ones(shape=(len(orig_trainset)))
+to_copy_next_epoch = np.zeros(shape=(len(orig_trainset)))
 curr_epoch_image_weight = np.ones(shape=(len(orig_trainset)))
 
 # For No Augmentation, set below variables accordingly
@@ -175,7 +191,7 @@ if MSP_AUG_PCT == 0:
 
 print("\n", "*" * 100)
 print("Augmenting the Bottom {0}% MSP with {1} Additional Copies starting from Epoch {2} to Epoch {3}".format(
-    int(MSP_AUG_PCT * 100), ADD_AUG_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
+    int(MSP_AUG_PCT * 100), NUM_COPIES, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP))
 
 print("*" * 100, "\n")
 
@@ -232,14 +248,26 @@ def train(epoch):
     total = 0
 
     print("EPOCH {0}: Augment 1-hot Sum : {1}".format(epoch, np.sum(to_augment_next_epoch)))
+    print("EPOCH {0}: Copy 1-hot Sum : {1}".format(epoch, np.sum(to_copy_next_epoch)))
 
     if not _using_longtail_dataset:
         curr_trainset = classes.CIFAR10_DYNAMIC(augment_indicator=to_augment_next_epoch,
-                                                num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
+                                                # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
+                                                num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START <= epoch <= TGT_AUG_EPOCH_STOP else 0,
+                                                )
     else:
-        curr_trainset = classes.LONGTAIL_CIFAR10_DYNAMIC(dataset_npz=_train_npz,
+        # curr_trainset = classes.LONGTAIL_CIFAR10_DYNAMIC(dataset_npz=_train_npz,
+        #                                                  augment_indicator=to_augment_next_epoch,
+        #                                                  num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else NUM_COPIES)
+
+        curr_trainset = classes.LONGTAIL_CIFAR10_DYNAMIC_TEMP(dataset_npz=_train_npz,
                                                          augment_indicator=to_augment_next_epoch,
-                                                         num_additional_copies=0 if epoch <= TGT_AUG_EPOCH_START else ADD_AUG_COPIES)
+                                                         copy_indicator=to_copy_next_epoch,
+                                                         num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START<=epoch<=TGT_AUG_EPOCH_STOP else 0,
+                                                         # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
+        )
+
+        print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 
     if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
         # If Previous Epoch involved Relabelling, then load new labels!
@@ -374,6 +402,7 @@ for epoch in tqdm(range(args.EPOCHS)):
         np.save(f, train_argmax_predictions)
 
     to_augment_next_epoch.fill(1)
+    to_copy_next_epoch.fill(0)
 
     TGT_AUGMENT_SCHEDULE = (TGT_AUG_EPOCH_START - 1 <= epoch <= TGT_AUG_EPOCH_STOP - 1)
 
@@ -391,6 +420,16 @@ for epoch in tqdm(range(args.EPOCHS)):
         )
         # Prep for AUGMENT in the next epoch
         to_augment_next_epoch[min_sfmx_ix] = 1
+
+
+        to_copy_next_epoch.fill(0)
+        print("Clearing the Copy 1-hot Sum: {1} ".format(epoch, np.sum(to_copy_next_epoch)))
+        _, min_sfmx_ix_for_copy = torch.topk(
+            torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * COPY_PCT), largest=False
+        )
+        # Prep for Copy in the next epoch
+        to_copy_next_epoch[min_sfmx_ix_for_copy] = 1
+
 
     # Additional Information Available if using LongTail Datasets
     if _using_longtail_dataset:
