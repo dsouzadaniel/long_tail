@@ -427,8 +427,10 @@ for epoch in tqdm(range(args.EPOCHS)):
         _, min_sfmx_ix_for_copy = torch.topk(
             torch.tensor(curr_sfmx_scores), k=int(len(orig_trainset) * COPY_PCT), largest=False
         )
+        print(f"Min SFMX Indices : {min_sfmx_ix_for_copy.shape}")
         # Prep for Copy in the next epoch
         to_copy_next_epoch[min_sfmx_ix_for_copy] = 1
+        print("Now the Copy 1-hot Sum: {1} ".format(epoch, np.sum(to_copy_next_epoch)))
 
 
     # Additional Information Available if using LongTail Datasets
