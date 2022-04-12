@@ -191,7 +191,7 @@ if MSP_AUG_PCT == 0:
     to_augment_next_epoch = np.zeros(shape=(len(orig_trainset)))
 
 print("\n", "*" * 100)
-print(f"Augmenting the Bottom {int(MSP_AUG_PCT * 100)}% MSP [Copying the Bottom {COPY_PCT}% MSP with {NUM_COPIES} Additional Copies] starting from Epoch {TGT_AUG_EPOCH_START} to Epoch {TGT_AUG_EPOCH_STOP}")
+print(f"Augmenting the Bottom {int(MSP_AUG_PCT * 100)}% MSP [Copying the Bottom {int(COPY_PCT * 100)}% MSP with {NUM_COPIES} Additional Copies] starting from Epoch {TGT_AUG_EPOCH_START} to Epoch {TGT_AUG_EPOCH_STOP}")
 
 print("*" * 100, "\n")
 

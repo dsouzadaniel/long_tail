@@ -361,6 +361,9 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
         for ix in self.ixs_to_copy:
             expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
 
+
+        print(f"IXS to COPY SUM : {np.sum(self.ixs_to_copy)}")
+        print(f"NUM OF ADD COPIES : {self.num_additional_copies}")
         assert len(expanded_dataset) == np.sum(self.ixs_to_copy) * self.num_additional_copies, len(expanded_dataset)
 
          # Add the newly added ixs
