@@ -345,9 +345,7 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
         # Collect the Ixs for __getitem__
         self.ixs_to_augment = np.where(self.augment_indicator==1)[0]
 
-        print(f"TEMP A : {np.sum(self.copy_indicator)}")
         self.ixs_to_copy = np.where(self.copy_indicator == 1)[0]
-        print(f"TEMP B : {self.ixs_to_copy.shape}")
 
         # Get Original Dataset without any transform/augmentation
         _orig_dataset = LONGTAIL_CIFAR10(dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
@@ -363,11 +361,7 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
         for ix in self.ixs_to_copy:
             expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
 
-
-        print(f"IXS to COPY SUM : {self.ixs_to_copy.shape}")
-        print(f"NUM OF ADD COPIES : {self.num_additional_copies}")
-        print(f"{len(self.ixs_to_copy)} MAGIC")
-        assert len(expanded_dataset) == np.sum(self.ixs_to_copy) * self.num_additional_copies, len(expanded_dataset)
+        assert len(expanded_dataset) == np.sum(self.copy_indicator) * self.num_additional_copies, len(expanded_dataset)
 
          # Add the newly added ixs
         self.ixs_to_augment = np.concatenate(
