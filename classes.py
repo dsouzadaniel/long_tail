@@ -350,8 +350,8 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
 
         # Get Original Dataset without any transform/augmentation
         _orig_dataset = LONGTAIL_CIFAR10(dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
-        self.copy_ix_to_orig_ix = np.arange(len(_orig_dataset))
-        print(f"YOLO A : {len(self.copy_ix_to_orig_ix)}")
+        self.map_to_orig_ix = np.arange(len(_orig_dataset))
+        # print(f"YOLO A : {len(self.copy_ix_to_orig_ix)}")
         self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
 
@@ -368,8 +368,8 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
             expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
             expanded_ix_to_orig_ix+=[ix]*self.num_additional_copies
 
-        self.copy_ix_to_orig_ix = np.concatenate([self.copy_ix_to_orig_ix, np.array(expanded_ix_to_orig_ix)])
-        print(f"YOLO B : {len(self.copy_ix_to_orig_ix)}")
+        self.map_to_orig_ix = np.concatenate([self.map_to_orig_ix, np.array(expanded_ix_to_orig_ix)])
+        # print(f"YOLO B : {len(self.copy_ix_to_orig_ix)}")
 
         assert len(expanded_dataset) == np.sum(self.copy_indicator) * self.num_additional_copies, len(expanded_dataset)
 
