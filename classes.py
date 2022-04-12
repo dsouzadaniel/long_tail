@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Tuple
 from PIL import Image
 from collections import Counter
+import torch
 from torch.utils.data import Dataset
 from torchvision.datasets import DatasetFolder
 # Class Definitions
@@ -349,17 +350,26 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
 
         # Get Original Dataset without any transform/augmentation
         _orig_dataset = LONGTAIL_CIFAR10(dataset_npz=dataset_npz, apply_transform=False, apply_augmentation=False).dataset
+        self.copy_ix_to_orig_ix = np.arange(len(_orig_dataset))
+        print(f"YOLO A : {len(self.copy_ix_to_orig_ix)}")
         self.dataset = self.make_dataset(base_dataset = _orig_dataset)
 
 
         # shuffle so added images aren't all at the end
         self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
 
+
+
     def make_dataset(self, base_dataset: List[Tuple]):
 
         expanded_dataset = []
+        expanded_ix_to_orig_ix = []
         for ix in self.ixs_to_copy:
             expanded_dataset.extend([base_dataset[ix] for _ in range(self.num_additional_copies)])
+            expanded_ix_to_orig_ix+=[ix]*self.num_additional_copies
+
+        self.copy_ix_to_orig_ix = torch.cat(self.copy_ix_to_orig_ix, torch.as_tensor(expanded_ix_to_orig_ix))
+        print(f"YOLO B : {len(self.copy_ix_to_orig_ix)}")
 
         assert len(expanded_dataset) == np.sum(self.copy_indicator) * self.num_additional_copies, len(expanded_dataset)
 
