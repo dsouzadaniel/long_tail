@@ -140,6 +140,7 @@ assert TGT_AUG_EPOCH_STOP >= TGT_AUG_EPOCH_START, "The Target Stop Epoch is smal
 assert INTERVENTION_RECORD_EPOCH >= TGT_AUG_EPOCH_STOP, "The Intervention Epoch is smaller than the Stop Epoch!"
 
 assert 0 <= MSP_AUG_PCT <= 1, "MSP_AUG_PCT must be between 0 and 1"
+assert 0 <= COPY_PCT <= 1, "COPY_PCT must be between 0 and 1"
 assert 0 <= RELABEL_PCT <= 1, "RELABEL_PCT must be between 0 and 1"
 
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
