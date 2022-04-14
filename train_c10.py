@@ -100,8 +100,8 @@ assert not ((args.NUM_COPIES==0.0)!=(args.COPY_PCT==0.0)), "Your Copy Settings d
 #####################################################
 # Settings
 # TRAIN_DATASET = 'cifar10'
-TRAIN_DATASET = 'N20_A20_T60'
-# TRAIN_DATASET = 'N20_A20_TX2'
+# TRAIN_DATASET = 'N20_A20_T60'
+TRAIN_DATASET = 'N20_A20_TX2'
 
 #####################################################
 # Targeted Augmentation
