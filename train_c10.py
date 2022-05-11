@@ -275,8 +275,9 @@ def train(epoch):
                                                          num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START<=epoch<=TGT_AUG_EPOCH_STOP else 0,
                                                          # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
         )
+        print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
+        print(torch.tensor(np.load(REWIND_INDICATOR)).shape)
         curr_trainset.filter_dataset(ixs_to_keep=torch.tensor(np.load(REWIND_INDICATOR)))
-
         print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 
     if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
