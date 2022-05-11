@@ -295,6 +295,11 @@ class LONGTAIL_CIFAR10_DYNAMIC(Dataset):
         print("New Labels Loaded!")
         return
 
+    def filter_dataset(self, ixs_to_keep):
+        self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
+        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
+        return
+
     def __getitem__(self, ix):
         added_ix = self.shuffled_ix_mapping[ix]
         image, label = self.dataset[added_ix]
