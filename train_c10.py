@@ -147,8 +147,8 @@ _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
 print("Relabel PCT : {0}".format(INTERVENTION_STR))
 
-REWIND_INDICATOR = "aug_1.0_rewind_3_drop_0.2.npy"
-REWIND_STR = 'REWIND_3_STD'
+REWIND_INDICATOR = "aug_0.2_rewind_3_drop_0.2.npy"
+REWIND_STR = 'REWIND_3_TGT'
 
 
 EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
