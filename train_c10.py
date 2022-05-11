@@ -146,10 +146,18 @@ assert 0 <= RELABEL_PCT <= 1, "RELABEL_PCT must be between 0 and 1"
 _using_longtail_dataset = False if TRAIN_DATASET == 'cifar10' else True
 
 print("Relabel PCT : {0}".format(INTERVENTION_STR))
+
+REWIND_INDICATOR = "aug_1.0_rewind_3_drop_0.2.npy"
+REWIND_STR = 'REWIND_3_STD'
+
+
 EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
 if COPY_PCT!=0.0 or NUM_COPIES!=0.0:
     EXP_NAME = EXP_NAME + f"_with_{NUM_COPIES}_copies_of_{COPY_PCT}"
-WRITE_FOLDER = os.path.join("YYY_C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
+
+EXP_NAME = REWIND_STR+"_"+EXP_NAME
+
+WRITE_FOLDER = os.path.join("RRR_C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
 
 # Folder to collect epoch snapshots
 if not os.path.exists(WRITE_FOLDER):
@@ -170,6 +178,7 @@ else:
     print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
     _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR10', TRAIN_DATASET + '.npz')
     orig_trainset = classes.LONGTAIL_CIFAR10(dataset_npz=_train_npz, apply_augmentation=False)
+    orig_trainset.filter_dataset(ixs_to_keep=torch.tensor(np.load(REWIND_INDICATOR)))
 
 print(orig_trainset)
 
@@ -266,6 +275,7 @@ def train(epoch):
                                                          num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START<=epoch<=TGT_AUG_EPOCH_STOP else 0,
                                                          # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
         )
+        curr_trainset.filter_dataset(ixs_to_keep=torch.tensor(np.load(REWIND_INDICATOR)))
 
         print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 

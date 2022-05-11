@@ -202,6 +202,10 @@ class LONGTAIL_CIFAR10(Dataset):
          zip(list(_dataset_npz['image_data']), _dataset_npz['label_data'])]
         return dataset
 
+    def filter_dataset(self, ixs_to_keep):
+        self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
+        return
+
     def __getitem__(self, ix):
         data, label = self.dataset[ix]
         if self.transforms:
@@ -394,6 +398,11 @@ class LONGTAIL_CIFAR10_DYNAMIC_TEMP(Dataset):
                         ]
         self.dataset = self.make_dataset(base_dataset=_new_base_dataset)
         print("New Labels Loaded!")
+        return
+
+    def filter_dataset(self, ixs_to_keep):
+        self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
+        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
         return
 
     def __getitem__(self, ix):
