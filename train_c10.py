@@ -178,7 +178,7 @@ else:
     print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
     _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR10', TRAIN_DATASET + '.npz')
     orig_trainset = classes.LONGTAIL_CIFAR10(dataset_npz=_train_npz, apply_augmentation=False)
-    orig_trainset.filter_dataset(ixs_to_keep=torch.tensor(np.load(REWIND_INDICATOR)))
+    orig_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
 
 print(orig_trainset)
 
@@ -277,7 +277,7 @@ def train(epoch):
         )
         print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
         print(torch.tensor(np.load(REWIND_INDICATOR)).shape)
-        curr_trainset.filter_dataset(ixs_to_keep=torch.tensor(np.load(REWIND_INDICATOR)))
+        curr_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
         print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 
     if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
