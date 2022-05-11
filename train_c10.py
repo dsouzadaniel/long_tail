@@ -523,7 +523,7 @@ collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob
 collect_predprob_test_data_df.to_csv(os.path.join(WRITE_FOLDER, "test_predprob.csv"), index=False)
 
 # Write Additional Files( if using LongTail dataset)
-if _using_longtail_dataset:
+if False and _using_longtail_dataset:
     aupr_df = pd.DataFrame(
         data=collect_aupr_data,
         columns=[
