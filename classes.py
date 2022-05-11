@@ -203,7 +203,10 @@ class LONGTAIL_CIFAR10(Dataset):
         return dataset
 
     def filter_dataset(self, ixs_to_keep):
+
         print(f"ABCD_XXX --> {len(self.dataset)}")
+        print(ixs_to_keep.shape)
+        print(ixs_to_keep)
         self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
         print(f"ABCD_YYY --> {len(self.dataset)}")
         self.selected_ixs_for_noisy = [x for ix,x in enumerate(self.selected_ixs_for_noisy) if ix in ixs_to_keep]
