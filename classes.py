@@ -204,9 +204,9 @@ class LONGTAIL_CIFAR10(Dataset):
 
     def filter_dataset(self, ixs_to_keep):
         self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
-        self.selected_ixs_for_noisy = [x for ix,x in enumerate(self.selected_ixs_for_noisy) if ix in ixs_to_keep]
-        self.selected_ixs_for_atypical = [x for ix, x in enumerate(self.selected_ixs_for_atypical) if ix in ixs_to_keep]
-        self.selected_ixs_for_typical = [x for ix, x in enumerate(self.selected_ixs_for_typical) if ix in ixs_to_keep]
+        self.selected_ixs_for_noisy = [x for x in self.selected_ixs_for_noisy if x in ixs_to_keep]
+        self.selected_ixs_for_atypical = [x for x in self.selected_ixs_for_atypical if x in ixs_to_keep]
+        self.selected_ixs_for_typical = [x for x in self.selected_ixs_for_typical if x in ixs_to_keep]
         return
 
     def __getitem__(self, ix):
