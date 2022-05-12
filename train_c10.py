@@ -156,7 +156,8 @@ EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START
 if COPY_PCT!=0.0 or NUM_COPIES!=0.0:
     EXP_NAME = EXP_NAME + f"_with_{NUM_COPIES}_copies_of_{COPY_PCT}"
 
-EXP_NAME = REWIND_STR+"_"+EXP_NAME
+if REWIND_ACTION:
+    EXP_NAME = REWIND_STR+"_"+EXP_NAME
 
 WRITE_FOLDER = os.path.join("RRR_C10_{0}_{1}_{2}".format(seed_value, INTERVENTION_STR, TRAIN_DATASET), EXP_NAME)
 
