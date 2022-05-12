@@ -57,6 +57,9 @@ class CIFAR10(Dataset):
             data = self.transforms(data)
         return ix, data, target
 
+    def filter_dataset(self, ixs_to_keep):
+        self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
+
     def __len__(self):
         return len(self.dataset)
 
@@ -138,6 +141,10 @@ class CIFAR10_DYNAMIC(Dataset):
             data = self.transform(image)
 
         return added_ix, data, target
+
+    def filter_dataset(self, ixs_to_keep):
+        self.dataset = [(d, l) for ix, (d, l) in enumerate(self.dataset) if ix in ixs_to_keep]
+        self.shuffled_ix_mapping = np.random.permutation(len(self.dataset))
 
     def __len__(self):
         return len(self.dataset)

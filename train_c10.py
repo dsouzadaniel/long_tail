@@ -180,8 +180,9 @@ else:
     print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
     _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR10', TRAIN_DATASET + '.npz')
     orig_trainset = classes.LONGTAIL_CIFAR10(dataset_npz=_train_npz, apply_augmentation=False)
-    if REWIND_ACTION:
-        orig_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
+
+if REWIND_ACTION:
+    orig_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
 
 print(orig_trainset)
 
@@ -278,9 +279,10 @@ def train(epoch):
                                                          num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START<=epoch<=TGT_AUG_EPOCH_STOP else 0,
                                                          # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
         )
-        if REWIND_ACTION:
-            curr_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
-        print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
+
+    if REWIND_ACTION:
+        curr_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
+    print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 
     if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
         # If Previous Epoch involved Relabelling, then load new labels!
