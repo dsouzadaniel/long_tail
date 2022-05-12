@@ -99,8 +99,8 @@ assert not ((args.NUM_COPIES==0.0)!=(args.COPY_PCT==0.0)), "Your Copy Settings d
 
 #####################################################
 # Settings
-# TRAIN_DATASET = 'cifar10'
-TRAIN_DATASET = 'N20_A20_T60'
+TRAIN_DATASET = 'cifar10'
+# TRAIN_DATASET = 'N20_A20_T60'
 # TRAIN_DATASET = 'N20_A20_TX2'
 
 #####################################################
@@ -149,6 +149,7 @@ print("Relabel PCT : {0}".format(INTERVENTION_STR))
 
 REWIND_INDICATOR = "aug_1.0_rewind_3_drop_0.2.npy"
 REWIND_STR = 'REWIND_3_STD'
+REWIND_ACTION = True
 
 
 EXP_NAME = 'aug_msp_{0}_from_{1}_to_{2}'.format(MSP_AUG_PCT, TGT_AUG_EPOCH_START, TGT_AUG_EPOCH_STOP)
@@ -178,7 +179,8 @@ else:
     print("{0}_Using LongTail({1}) Dataset_{0}".format("*" * 50, TRAIN_DATASET))
     _train_npz = os.path.join(config.DATASET_FOLDER, 'LONGTAIL_CIFAR10', TRAIN_DATASET + '.npz')
     orig_trainset = classes.LONGTAIL_CIFAR10(dataset_npz=_train_npz, apply_augmentation=False)
-    orig_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
+    if REWIND_ACTION:
+        orig_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
 
 print(orig_trainset)
 
@@ -275,7 +277,8 @@ def train(epoch):
                                                          num_additional_copies=NUM_COPIES if TGT_AUG_EPOCH_START<=epoch<=TGT_AUG_EPOCH_STOP else 0,
                                                          # num_additional_copies=0 if epoch < TGT_AUG_EPOCH_START else NUM_COPIES,
         )
-        curr_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
+        if REWIND_ACTION:
+            curr_trainset.filter_dataset(ixs_to_keep=torch.where(torch.tensor(np.load(REWIND_INDICATOR))==1)[0])
         print(f"Length of Dataset for this epoch is : {len(curr_trainset)}")
 
     if (epoch >= INTERVENTION_ACT_EPOCH) and (RELABEL_PCT != 0.0):
@@ -441,7 +444,7 @@ for epoch in tqdm(range(args.EPOCHS)):
 
 
     # Additional Information Available if using LongTail Datasets
-    if False and _using_longtail_dataset:
+    if not REWIND_ACTION and _using_longtail_dataset:
         # AUPR Calculation
         noisy_1hot, atypical_1hot = np.zeros(len(orig_trainset)), np.zeros(len(orig_trainset))
         np.put(a=noisy_1hot, ind=orig_trainset.selected_ixs_for_noisy, v=1)
@@ -523,7 +526,7 @@ collect_predprob_train_data_df.to_csv(os.path.join(WRITE_FOLDER, "train_predprob
 collect_predprob_test_data_df.to_csv(os.path.join(WRITE_FOLDER, "test_predprob.csv"), index=False)
 
 # Write Additional Files( if using LongTail dataset)
-if False and _using_longtail_dataset:
+if not REWIND_ACTION and _using_longtail_dataset:
     aupr_df = pd.DataFrame(
         data=collect_aupr_data,
         columns=[
